@@ -148,18 +148,38 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated }: DetailPan
             {recipe.ingredients.length > 0 && (
               <div className="detail-section">
                 <div className="detail-section-label">Ingredients</div>
-                <ul className="ingredients-list">
-                  {recipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
-                </ul>
+                <div className="ingredients-list">
+                  {recipe.ingredients.map((ing, i) =>
+                    ing.startsWith('# ') ? (
+                      <div key={i} className="recipe-section-header">{ing.slice(2)}</div>
+                    ) : (
+                      <div key={i} className="ingredient-item">
+                        <span className="ingredient-bullet">·</span>{ing}
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
             )}
 
             {recipe.steps.length > 0 && (
               <div className="detail-section">
                 <div className="detail-section-label">Steps</div>
-                <ol className="steps-list">
-                  {recipe.steps.map((step, i) => <li key={i}>{step}</li>)}
-                </ol>
+                <div className="steps-list">
+                  {(() => {
+                    let n = 0
+                    return recipe.steps.map((step, i) => {
+                      if (step.startsWith('# ')) { n = 0; return <div key={i} className="recipe-section-header">{step.slice(2)}</div> }
+                      n++
+                      return (
+                        <div key={i} className="step-item">
+                          <span className="step-num">{n}</span>
+                          <span>{step}</span>
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
               </div>
             )}
 

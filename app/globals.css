@@ -384,9 +384,8 @@ body {
   height: 14px;
 }
 
-.ingredients-list {
-  margin: 0;
-  padding-left: 1.25rem;
+.ingredients-list,
+.steps-list {
   font-size: 0.875rem;
   color: var(--text);
   display: flex;
@@ -395,13 +394,47 @@ body {
 }
 
 .steps-list {
-  margin: 0;
-  padding-left: 1.5rem;
-  font-size: 0.875rem;
-  color: var(--text);
-  display: flex;
-  flex-direction: column;
   gap: 0.625rem;
+}
+
+.recipe-section-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  margin-bottom: 0.1rem;
+}
+
+.recipe-section-header:first-child {
+  margin-top: 0;
+}
+
+.ingredient-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.ingredient-bullet {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.step-item {
+  display: flex;
+  gap: 0.625rem;
+  align-items: baseline;
+}
+
+.step-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 1.25rem;
+  flex-shrink: 0;
 }
 
 .edit-form {

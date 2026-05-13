@@ -174,13 +174,45 @@ def extract_ingredients(soup: BeautifulSoup) -> list:
     # Strategy 3: CSS class heuristics
     try:
         ing_re = re.compile(r'ingredient', re.IGNORECASE)
-        for container in soup.find_all(['ul', 'ol', 'div'], class_=ing_re):
+        heading_re = re.compile(r'heading|header|title|group.?name|section.?name', re.IGNORECASE)
+        skip_headings = re.compile(
+            r'^(you will need|ingredients?|what you.?ll need|for the recipe)$',
+            re.IGNORECASE
+        )
+
+        for container in soup.find_all(['section', 'ul', 'ol', 'div'], class_=ing_re):
+            # First try: standard li list
             items = container.find_all('li', recursive=False) or container.find_all('li')
             if len(items) >= 2:
                 result = [item.get_text(' ', strip=True) for item in items]
                 result = [r for r in result if r and len(r) < 300]
                 if len(result) >= 2:
                     return result
+
+            # Second try: section-aware walk (heading + p/li groups)
+            result = []
+            for child in container.children:
+                if not hasattr(child, 'name') or not child.name:
+                    continue
+                cls = ' '.join(child.get('class') or [])
+                text = child.get_text(' ', strip=True)
+                if not text:
+                    continue
+                # Section header
+                if child.name in ('h2', 'h3', 'h4', 'h5') or heading_re.search(cls):
+                    if len(text) < 100 and not skip_headings.match(text):
+                        result.append(f'# {text}')
+                    continue
+                # Ingredient group: collect p or li children
+                sub = child.find_all('li') or child.find_all('p')
+                for item in sub:
+                    t = item.get_text(' ', strip=True)
+                    if t and len(t) < 300:
+                        result.append(t)
+            if len(result) >= 3:
+                return result
+
+        # Fallback: individual elements with ingredient class
         items = soup.find_all(class_=ing_re)
         candidates = []
         seen = set()
@@ -237,6 +269,9 @@ def extract_steps(soup: BeautifulSoup) -> list:
                     elif isinstance(item, dict):
                         item_type = item.get('@type', '')
                         if item_type == 'HowToSection':
+                            section_name = item.get('name', '').strip()
+                            if section_name:
+                                result.append(f'# {section_name}')
                             for step in item.get('itemListElement', []):
                                 if isinstance(step, dict):
                                     val = step.get('text', '').strip()
