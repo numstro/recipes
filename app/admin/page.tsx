@@ -143,6 +143,15 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteUser(id: string, email: string) {
+    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: adminHeaders(),
+    })
+    if (res.ok) setUsers(prev => prev.filter(u => u.id !== id))
+  }
+
   async function handleUnban(ip: string) {
     const res = await fetch('/api/admin/bans', {
       method: 'DELETE',
@@ -257,6 +266,7 @@ export default function AdminPage() {
                   <th style={thStyle}>Email</th>
                   <th style={thStyle}>Joined</th>
                   <th style={thStyle}>Last sign in</th>
+                  <th style={thStyle}></th>
                 </tr>
               </thead>
               <tbody>
@@ -268,10 +278,19 @@ export default function AdminPage() {
                     <td style={{ ...tdStyle, color: 'var(--text-muted)' }}>
                       {u.last_sign_in_at ? fmtDate(u.last_sign_in_at) : '—'}
                     </td>
+                    <td style={tdStyle}>
+                      <button
+                        className="btn btn-danger"
+                        style={{ fontSize: '0.775rem', padding: '0.2rem 0.5rem' }}
+                        onClick={() => handleDeleteUser(u.id, u.email)}
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {users.length === 0 && (
-                  <tr><td colSpan={4} style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-muted)' }}>No users</td></tr>
+                  <tr><td colSpan={5} style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-muted)' }}>No users</td></tr>
                 )}
               </tbody>
             </table>
