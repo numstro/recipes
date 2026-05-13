@@ -231,6 +231,13 @@ def extract_ingredients(soup: BeautifulSoup) -> list:
     return []
 
 
+_LEADING_NUM = re.compile(r'^\d+[\.\):]?\s+')
+
+
+def _strip_step_num(text: str) -> str:
+    return _LEADING_NUM.sub('', text).strip()
+
+
 def extract_steps(soup: BeautifulSoup) -> list:
     # Strategy 1: Schema.org JSON-LD
     try:
@@ -290,7 +297,74 @@ def extract_steps(soup: BeautifulSoup) -> list:
     except Exception:
         pass
 
-    # Strategy 2: heading heuristic
+    # Strategy 2: CSS class heuristics (section-aware)
+    try:
+        step_re = re.compile(r'direction|instruction|step|method', re.IGNORECASE)
+        heading_re = re.compile(r'heading|header|title|step.?name|section', re.IGNORECASE)
+        skip_headings = re.compile(
+            r'^(directions?|instructions?|method|steps?|preparation|how to make)$',
+            re.IGNORECASE
+        )
+
+        for container in soup.find_all(['section', 'div'], class_=step_re):
+            result = []
+            for child in container.children:
+                if not hasattr(child, 'name') or not child.name:
+                    continue
+                cls = ' '.join(child.get('class') or [])
+                text = child.get_text(' ', strip=True)
+                if not text:
+                    continue
+                # Skip plain headings like "Directions"
+                if child.name in ('h1', 'h2', 'h3', 'h4', 'h5'):
+                    if not skip_headings.match(text):
+                        result.append(f'# {text}')
+                    continue
+                # Section-grouped structure: ul/ol containing a label + a steps span
+                if child.name in ('ul', 'ol'):
+                    section_label = None
+                    steps_group = None
+                    for gc in child.children:
+                        if not hasattr(gc, 'name') or not gc.name:
+                            continue
+                        gcls = ' '.join(gc.get('class') or [])
+                        gctext = gc.get_text(' ', strip=True)
+                        if (heading_re.search(gcls) or gc.name == 'li') and len(gctext) < 80:
+                            # Likely a section label li/span
+                            sub_ps = gc.find_all('p')
+                            if not sub_ps and len(gctext) < 60:
+                                section_label = gctext
+                            continue
+                        # A span/div containing the actual steps as p elements
+                        sub_ps = gc.find_all('p')
+                        if sub_ps:
+                            steps_group = sub_ps
+                    if section_label and steps_group:
+                        result.append(f'# {section_label}')
+                        for p in steps_group:
+                            t = _strip_step_num(p.get_text(' ', strip=True))
+                            if t and len(t) > 10:
+                                result.append(t)
+                        continue
+                    # Plain ol/ul with li steps
+                    lis = child.find_all('li')
+                    for li in lis:
+                        t = _strip_step_num(li.get_text(' ', strip=True))
+                        if t and len(t) > 10:
+                            result.append(t)
+                    continue
+                # A span/div that is itself a steps group (p children)
+                sub_ps = child.find_all('p', recursive=False)
+                for p in sub_ps:
+                    t = _strip_step_num(p.get_text(' ', strip=True))
+                    if t and len(t) > 10:
+                        result.append(t)
+            if len(result) >= 2:
+                return result
+    except Exception:
+        pass
+
+    # Strategy 3: heading heuristic
     try:
         _STEP_HEADINGS = re.compile(
             r'^\s*(directions?|instructions?|method|steps?|preparation)\s*$',
@@ -307,22 +381,22 @@ def extract_steps(soup: BeautifulSoup) -> list:
                     break
                 if sib.name in ('ol', 'ul'):
                     for li in sib.find_all('li'):
-                        text = li.get_text(' ', strip=True)
+                        text = _strip_step_num(li.get_text(' ', strip=True))
                         if text and len(text) > 10:
                             steps.append(text)
                 elif sib.name == 'p':
-                    text = sib.get_text(' ', strip=True)
+                    text = _strip_step_num(sib.get_text(' ', strip=True))
                     if text and len(text) > 10:
                         steps.append(text)
                 elif sib.name == 'div':
                     paras = sib.find_all('p', recursive=False)
                     if paras:
                         for p in paras:
-                            text = p.get_text(' ', strip=True)
+                            text = _strip_step_num(p.get_text(' ', strip=True))
                             if text and len(text) > 10:
                                 steps.append(text)
                     else:
-                        text = sib.get_text(' ', strip=True)
+                        text = _strip_step_num(sib.get_text(' ', strip=True))
                         if text and len(text) > 20:
                             steps.append(text)
                     break
