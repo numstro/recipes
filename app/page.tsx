@@ -25,14 +25,13 @@ interface Recipe {
 
 interface DetailPanelProps {
   recipe: Recipe
-  currentUserId: string
   token: string
   onClose: () => void
   onDeleted: (id: number) => void
   onUpdated: (recipe: Recipe) => void
 }
 
-function DetailPanel({ recipe, currentUserId, token, onClose, onDeleted, onUpdated }: DetailPanelProps) {
+function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
@@ -40,8 +39,6 @@ function DetailPanel({ recipe, currentUserId, token, onClose, onDeleted, onUpdat
   const [editIngredients, setEditIngredients] = useState(recipe.ingredients.join('\n'))
   const [editSteps, setEditSteps] = useState(recipe.steps.join('\n\n'))
   const [editTags, setEditTags] = useState(recipe.tags.join(', '))
-
-  const isOwner = recipe.added_by === currentUserId
 
   function startEdit() {
     setEditTitle(recipe.title ?? '')
@@ -181,12 +178,10 @@ function DetailPanel({ recipe, currentUserId, token, onClose, onDeleted, onUpdat
               </div>
             </div>
 
-            {isOwner && (
-              <div className="detail-actions">
-                <button className="btn btn-secondary" onClick={startEdit}>Edit</button>
-                <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
-              </div>
-            )}
+            <div className="detail-actions">
+              <button className="btn btn-secondary" onClick={startEdit}>Edit</button>
+              <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
+            </div>
           </>
         )}
       </div>
@@ -431,7 +426,6 @@ export default function HomePage() {
           {selected && (
             <DetailPanel
               recipe={selected}
-              currentUserId={user.id}
               token={token}
               onClose={() => setSelected(null)}
               onDeleted={id => { setRecipes(prev => prev.filter(x => x.id !== id)); setSelected(null) }}

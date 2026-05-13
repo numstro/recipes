@@ -24,17 +24,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json()
   const { title, description, notes, ingredients, steps, tags } = body
 
-  const { data: existing } = await supabase
-    .from('recipes')
-    .select('added_by')
-    .eq('id', id)
-    .single()
-
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (existing.added_by !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   const { data, error } = await supabase
     .from('recipes')
     .update({ title, description, notes, ingredients, steps, tags })
@@ -58,17 +47,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id } = await params
   const user = await getUser(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { data: existing } = await supabase
-    .from('recipes')
-    .select('added_by')
-    .eq('id', id)
-    .single()
-
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (existing.added_by !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
 
   const { error } = await supabase
     .from('recipes')
