@@ -31,9 +31,9 @@ body {
 }
 
 .nav-inner {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 1.5rem;
   height: 52px;
   display: flex;
   align-items: center;
@@ -98,9 +98,9 @@ body {
 }
 
 .page {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
+  padding: 1.5rem 1.5rem 3rem;
 }
 
 .add-form {
@@ -170,8 +170,8 @@ body {
 }
 
 .list-pane.has-detail {
-  max-width: 340px;
-  flex: 0 0 340px;
+  max-width: 420px;
+  flex: 0 0 420px;
 }
 
 .list-controls {
