@@ -122,12 +122,12 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated }: DetailPan
             </div>
 
             <div className="detail-section">
-              <div className="detail-section-label">Ingredients (one per line)</div>
+              <div className="detail-section-label">Ingredients <span className="edit-hint">one per line · <code># Section Name</code> for headers</span></div>
               <textarea className="edit-input" rows={8} value={editIngredients} onChange={e => setEditIngredients(e.target.value)} style={{ fontSize: 15 }} />
             </div>
 
             <div className="detail-section">
-              <div className="detail-section-label">Steps (blank line between steps)</div>
+              <div className="detail-section-label">Steps <span className="edit-hint">blank line between steps · <code># Section Name</code> restarts numbering</span></div>
               <textarea className="edit-input" rows={10} value={editSteps} onChange={e => setEditSteps(e.target.value)} style={{ fontSize: 15 }} />
             </div>
 

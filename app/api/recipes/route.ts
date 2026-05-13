@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
     query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,domain.ilike.%${q}%,notes.ilike.%${q}%`)
   }
   if (tags.length > 0) {
-    // OR: recipes that contain any of the selected tags
-    query = query.filter('tags', 'ov', JSON.stringify(tags))
+    // OR: recipes that contain any of the selected tags (JSONB cs per tag)
+    query = query.or(tags.map(t => `tags.cs.${JSON.stringify([t])}`).join(','))
   }
 
   const { data, error } = await query
