@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('recipes')
     .select('id,url,title,description,image_url,favicon_url,domain,notes,ingredients,steps,tags,added_by,saved_at,updated_at')
+    .is('deleted_at', null)
     .order('saved_at', { ascending: false })
 
   if (q) {

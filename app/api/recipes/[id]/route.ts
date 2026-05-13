@@ -70,11 +70,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { error } = await supabase.from('recipes').delete().eq('id', id)
+  const { error } = await supabase
+    .from('recipes')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await supabase.from('recipe_logs').insert({
-    recipe_id: null,
+    recipe_id: Number(id),
     user_id: user.id,
     ip_address: getIP(req),
     action: 'delete',
