@@ -70,7 +70,7 @@ class handler(BaseHTTPRequestHandler):
 _FIRST_INT = re.compile(r'\d+')
 
 
-def _parse_yield(raw) -> int | None:
+def _parse_yield(raw):
     if isinstance(raw, list):
         raw = raw[0] if raw else None
     if raw is None:
@@ -137,7 +137,7 @@ def fetch_metadata(url: str) -> dict:
     return result
 
 
-def extract_servings(soup: BeautifulSoup) -> int | None:
+def extract_servings(soup: BeautifulSoup):
     # Strategy 1: Schema.org JSON-LD recipeYield
     try:
         for tag in soup.find_all('script', type='application/ld+json'):

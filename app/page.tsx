@@ -63,13 +63,14 @@ function scaleIngredient(text: string, factor: number): string {
 interface DetailPanelProps {
   recipe: Recipe
   token: string
+  allTags: string[]
   onClose: () => void
   onDeleted: (id: number) => void
   onUpdated: (recipe: Recipe) => void
   onTagClick: (tag: string) => void
 }
 
-function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated, onTagClick }: DetailPanelProps) {
+function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, onTagClick }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
@@ -77,6 +78,7 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated, onTagClick 
   const [editIngredients, setEditIngredients] = useState(recipe.ingredients.join('\n'))
   const [editSteps, setEditSteps] = useState(recipe.steps.join('\n\n'))
   const [editTags, setEditTags] = useState(recipe.tags.join(', '))
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   const [desiredServings, setDesiredServings] = useState<number | null>(recipe.servings)
 
   useEffect(() => {
@@ -161,7 +163,43 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated, onTagClick 
 
             <div className="detail-section">
               <div className="detail-section-label">Tags (comma-separated)</div>
-              <input className="edit-input" value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. asian, quick, chicken" style={{ fontSize: 15 }} />
+              <input
+                className="edit-input"
+                value={editTags}
+                onChange={e => {
+                  const val = e.target.value
+                  setEditTags(val)
+                  const parts = val.split(',')
+                  const partial = parts[parts.length - 1].trim().toLowerCase()
+                  const already = parts.slice(0, -1).map(t => t.trim().toLowerCase()).filter(Boolean)
+                  if (partial.length >= 1) {
+                    setTagSuggestions(allTags.filter(t => t.startsWith(partial) && !already.includes(t) && t !== partial))
+                  } else {
+                    setTagSuggestions([])
+                  }
+                }}
+                onBlur={() => setTimeout(() => setTagSuggestions([]), 150)}
+                placeholder="e.g. asian, quick, chicken"
+                style={{ fontSize: 15 }}
+              />
+              {tagSuggestions.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.375rem' }}>
+                  {tagSuggestions.map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className="tag-chip tag-chip-sm"
+                      onMouseDown={e => {
+                        e.preventDefault()
+                        const parts = editTags.split(',')
+                        parts[parts.length - 1] = ' ' + tag
+                        setEditTags(parts.join(',').replace(/^,\s*/, '') + ', ')
+                        setTagSuggestions([])
+                      }}
+                    >{tag}</button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="detail-section">
@@ -529,6 +567,7 @@ export default function HomePage() {
             <DetailPanel
               recipe={selected}
               token={token}
+              allTags={allTags}
               onClose={() => setSelected(null)}
               onDeleted={id => { setRecipes(prev => prev.filter(x => x.id !== id)); setSelected(null) }}
               onUpdated={updated => {
