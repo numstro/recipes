@@ -149,7 +149,12 @@ export default function AdminPage() {
       method: 'DELETE',
       headers: adminHeaders(),
     })
-    if (res.ok) setUsers(prev => prev.filter(u => u.id !== id))
+    if (res.ok) {
+      setUsers(prev => prev.filter(u => u.id !== id))
+    } else {
+      const body = await res.json().catch(() => ({}))
+      alert(`Failed to delete user: ${body.error ?? res.status}`)
+    }
   }
 
   async function handleUnban(ip: string) {
