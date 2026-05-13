@@ -17,10 +17,47 @@ interface Recipe {
   ingredients: string[]
   steps: string[]
   tags: string[]
+  servings: number | null
   added_by: string
   added_by_name: string | null
   saved_at: string
   updated_at: string
+}
+
+const UNICODE_FRACS: Record<string, number> = {
+  '¼': 0.25, '½': 0.5, '¾': 0.75, '⅓': 1/3, '⅔': 2/3,
+  '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875,
+}
+const QTY_RE = /^(\d+)\s+(\d+)\/(\d+)|^(\d+)\/(\d+)|^(\d*\.?\d+)|^([¼½¾⅓⅔⅛⅜⅝⅞])/
+
+function parseQty(s: string): { value: number; len: number } | null {
+  const m = s.match(QTY_RE)
+  if (!m) return null
+  if (m[1] !== undefined) return { value: parseInt(m[1]) + parseInt(m[2]) / parseInt(m[3]), len: m[0].length }
+  if (m[4] !== undefined) return { value: parseInt(m[4]) / parseInt(m[5]), len: m[0].length }
+  if (m[6] !== undefined) { const v = parseFloat(m[6]); if (isNaN(v) || v === 0) return null; return { value: v, len: m[0].length } }
+  if (m[7] !== undefined) return { value: UNICODE_FRACS[m[7]], len: 1 }
+  return null
+}
+
+function formatQty(n: number): string {
+  if (n <= 0) return '0'
+  const whole = Math.floor(n)
+  const frac = n - whole
+  const FRACS: [number, string][] = [[1/8,'⅛'],[1/4,'¼'],[1/3,'⅓'],[3/8,'⅜'],[1/2,'½'],[5/8,'⅝'],[2/3,'⅔'],[3/4,'¾'],[7/8,'⅞']]
+  for (const [v, sym] of FRACS) {
+    if (Math.abs(frac - v) < 0.06) return whole > 0 ? `${whole}${sym}` : sym
+  }
+  if (frac < 0.06) return String(whole || 1)
+  if (frac > 0.94) return String(whole + 1)
+  return n.toFixed(1).replace(/\.0$/, '')
+}
+
+function scaleIngredient(text: string, factor: number): string {
+  if (factor === 1 || text.startsWith('# ')) return text
+  const parsed = parseQty(text)
+  if (!parsed) return text
+  return formatQty(parsed.value * factor) + text.slice(parsed.len)
 }
 
 interface DetailPanelProps {
@@ -40,6 +77,16 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated, onTagClick 
   const [editIngredients, setEditIngredients] = useState(recipe.ingredients.join('\n'))
   const [editSteps, setEditSteps] = useState(recipe.steps.join('\n\n'))
   const [editTags, setEditTags] = useState(recipe.tags.join(', '))
+  const [desiredServings, setDesiredServings] = useState<number | null>(recipe.servings)
+
+  useEffect(() => {
+    setDesiredServings(recipe.servings)
+    setEditing(false)
+  }, [recipe.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scaleFactor = (recipe.servings && desiredServings && desiredServings > 0)
+    ? desiredServings / recipe.servings
+    : 1
 
   function startEdit() {
     setEditTitle(recipe.title ?? '')
@@ -148,14 +195,34 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated, onTagClick 
 
             {recipe.ingredients.length > 0 && (
               <div className="detail-section">
-                <div className="detail-section-label">Ingredients</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                  <div className="detail-section-label" style={{ marginBottom: 0 }}>Ingredients</div>
+                  {recipe.servings != null && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span>Serves</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={desiredServings ?? ''}
+                        onChange={e => setDesiredServings(e.target.value ? parseInt(e.target.value) : null)}
+                        style={{ width: '3rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.75rem', textAlign: 'center', background: scaleFactor !== 1 ? '#fef3ee' : 'var(--bg)' }}
+                      />
+                      {scaleFactor !== 1 && (
+                        <button
+                          onClick={() => setDesiredServings(recipe.servings)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.7rem', padding: 0 }}
+                        >reset</button>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="ingredients-list">
                   {recipe.ingredients.map((ing, i) =>
                     ing.startsWith('# ') ? (
                       <div key={i} className="recipe-section-header">{ing.slice(2)}</div>
                     ) : (
                       <div key={i} className="ingredient-item">
-                        <span className="ingredient-bullet">·</span>{ing}
+                        <span className="ingredient-bullet">·</span>{scaleIngredient(ing, scaleFactor)}
                       </div>
                     )
                   )}

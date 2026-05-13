@@ -67,6 +67,18 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
 
+_FIRST_INT = re.compile(r'\d+')
+
+
+def _parse_yield(raw) -> int | None:
+    if isinstance(raw, list):
+        raw = raw[0] if raw else None
+    if raw is None:
+        return None
+    m = _FIRST_INT.search(str(raw))
+    return int(m.group()) if m else None
+
+
 def fetch_metadata(url: str) -> dict:
     result = {
         'url': url,
@@ -78,6 +90,7 @@ def fetch_metadata(url: str) -> dict:
         'text_snapshot': None,
         'ingredients': [],
         'steps': [],
+        'servings': None,
     }
 
     try:
@@ -114,6 +127,7 @@ def fetch_metadata(url: str) -> dict:
     # Must run before _extract_text which calls decompose() on script tags
     result['ingredients'] = extract_ingredients(soup)
     result['steps'] = extract_steps(soup)
+    result['servings'] = extract_servings(soup)
 
     result['text_snapshot'] = _extract_text(soup)
 
@@ -121,6 +135,49 @@ def fetch_metadata(url: str) -> dict:
         result['title'] = result['domain'] or url
 
     return result
+
+
+def extract_servings(soup: BeautifulSoup) -> int | None:
+    # Strategy 1: Schema.org JSON-LD recipeYield
+    try:
+        for tag in soup.find_all('script', type='application/ld+json'):
+            try:
+                data = _json.loads(tag.string or '')
+            except Exception:
+                continue
+            if isinstance(data, dict) and '@graph' in data:
+                candidates = data['@graph']
+            elif isinstance(data, list):
+                candidates = data
+            else:
+                candidates = [data]
+            for obj in candidates:
+                if not isinstance(obj, dict):
+                    continue
+                obj_type = obj.get('@type', '')
+                types = obj_type if isinstance(obj_type, list) else [obj_type]
+                if not any(t.lower() == 'recipe' for t in types if isinstance(t, str)):
+                    continue
+                raw = obj.get('recipeYield')
+                if raw is not None:
+                    parsed = _parse_yield(raw)
+                    if parsed:
+                        return parsed
+    except Exception:
+        pass
+
+    # Strategy 2: microdata
+    try:
+        el = soup.find(attrs={'itemprop': 'recipeYield'})
+        if el:
+            text = el.get('content') or el.get_text(' ', strip=True)
+            parsed = _parse_yield(text)
+            if parsed:
+                return parsed
+    except Exception:
+        pass
+
+    return None
 
 
 def extract_ingredients(soup: BeautifulSoup) -> list:

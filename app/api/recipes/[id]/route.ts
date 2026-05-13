@@ -22,11 +22,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { title, description, notes, ingredients, steps, tags } = body
+  const { title, description, notes, ingredients, steps, tags, servings } = body
+
+  const update: Record<string, unknown> = { title, description, notes, ingredients, steps, tags }
+  if ('servings' in body) update.servings = servings ?? null
 
   const { data, error } = await supabase
     .from('recipes')
-    .update({ title, description, notes, ingredients, steps, tags })
+    .update(update)
     .eq('id', id)
     .select()
     .single()

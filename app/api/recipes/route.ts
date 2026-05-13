@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('recipes')
-    .select('id,url,title,description,image_url,favicon_url,domain,notes,ingredients,steps,tags,added_by,saved_at,updated_at')
+    .select('id,url,title,description,image_url,favicon_url,domain,notes,ingredients,steps,tags,servings,added_by,saved_at,updated_at')
     .is('deleted_at', null)
     .order('saved_at', { ascending: false })
 
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { url, title, description, image_url, favicon_url, domain, notes, ingredients, steps, tags, text_snapshot } = body
+  const { url, title, description, image_url, favicon_url, domain, notes, ingredients, steps, tags, text_snapshot, servings } = body
 
   if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 })
 
@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
       ingredients: ingredients || [],
       steps: steps || [],
       tags: tags || [],
+      servings: servings ?? null,
       text_snapshot: text_snapshot || null,
       added_by: user.id,
     })
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
             domain: domain || existing.domain,
             ingredients: ingredients?.length ? ingredients : existing.ingredients,
             steps: steps?.length ? steps : existing.steps,
+            servings: servings ?? existing.servings,
             added_by: user.id,
           })
           .eq('url', url)
