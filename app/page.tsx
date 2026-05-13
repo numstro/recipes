@@ -68,9 +68,10 @@ interface DetailPanelProps {
   onDeleted: (id: number) => void
   onUpdated: (recipe: Recipe) => void
   onTagClick: (tag: string) => void
+  onNewTags: (tags: string[]) => void
 }
 
-function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, onTagClick }: DetailPanelProps) {
+function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, onTagClick, onNewTags }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
@@ -125,17 +126,19 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
     }
   }
 
-  async function saveTagsInline(newTags: string[]) {
+  async function saveTagsInline(tags: string[]) {
     setSavingTags(true)
     const res = await fetch(`/api/recipes/${recipe.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ title: recipe.title, description: recipe.description, notes: recipe.notes, ingredients: recipe.ingredients, steps: recipe.steps, tags: newTags }),
+      body: JSON.stringify({ title: recipe.title, description: recipe.description, notes: recipe.notes, ingredients: recipe.ingredients, steps: recipe.steps, tags }),
     })
     setSavingTags(false)
     if (res.ok) {
       const { recipe: updated } = await res.json()
       onUpdated({ ...updated, added_by_name: recipe.added_by_name })
+      const added = tags.filter(t => !allTags.includes(t))
+      if (added.length > 0) onNewTags(added)
     }
   }
 
@@ -628,6 +631,7 @@ export default function HomePage() {
                 setSelected(withName)
               }}
               onTagClick={tag => handleTagClick(tag)}
+              onNewTags={tags => setAllTags(prev => [...new Set([...prev, ...tags])].sort())}
             />
           )}
         </div>
