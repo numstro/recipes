@@ -80,6 +80,9 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
   const [editTags, setEditTags] = useState(recipe.tags.join(', '))
   const [editServings, setEditServings] = useState(recipe.servings?.toString() ?? '')
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState('')
+  const [tagInputSuggestions, setTagInputSuggestions] = useState<string[]>([])
+  const [savingTags, setSavingTags] = useState(false)
   const [desiredServings, setDesiredServings] = useState<number | null>(recipe.servings)
 
   useEffect(() => {
@@ -119,6 +122,28 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
       onUpdated(updated)
       setEditing(false)
     }
+  }
+
+  async function saveTagsInline(newTags: string[]) {
+    setSavingTags(true)
+    const res = await fetch(`/api/recipes/${recipe.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ title: recipe.title, description: recipe.description, notes: recipe.notes, ingredients: recipe.ingredients, steps: recipe.steps, tags: newTags }),
+    })
+    setSavingTags(false)
+    if (res.ok) {
+      const { recipe: updated } = await res.json()
+      onUpdated({ ...updated, added_by_name: recipe.added_by_name })
+    }
+  }
+
+  function addTag(tag: string) {
+    const cleaned = tag.trim().toLowerCase()
+    if (!cleaned || recipe.tags.includes(cleaned)) return
+    saveTagsInline([...recipe.tags, cleaned])
+    setTagInput('')
+    setTagInputSuggestions([])
   }
 
   async function handleDelete() {
@@ -164,46 +189,6 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
               <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ fontSize: 15 }} />
             </div>
 
-            <div className="detail-section">
-              <div className="detail-section-label">Tags (comma-separated)</div>
-              <input
-                className="edit-input"
-                value={editTags}
-                onChange={e => {
-                  const val = e.target.value
-                  setEditTags(val)
-                  const parts = val.split(',')
-                  const partial = parts[parts.length - 1].trim().toLowerCase()
-                  const already = parts.slice(0, -1).map(t => t.trim().toLowerCase()).filter(Boolean)
-                  if (partial.length >= 1) {
-                    setTagSuggestions(allTags.filter(t => t.startsWith(partial) && !already.includes(t) && t !== partial))
-                  } else {
-                    setTagSuggestions([])
-                  }
-                }}
-                onBlur={() => setTimeout(() => setTagSuggestions([]), 150)}
-                placeholder="e.g. asian, quick, chicken"
-                style={{ fontSize: 15 }}
-              />
-              {tagSuggestions.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.375rem' }}>
-                  {tagSuggestions.map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className="tag-chip tag-chip-sm"
-                      onMouseDown={e => {
-                        e.preventDefault()
-                        const parts = editTags.split(',')
-                        parts[parts.length - 1] = ' ' + tag
-                        setEditTags(parts.join(',').replace(/^,\s*/, '') + ', ')
-                        setTagSuggestions([])
-                      }}
-                    >{tag}</button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             <div className="detail-section">
               <div className="detail-section-label">Serves <span className="edit-hint">default serving size</span></div>
@@ -295,16 +280,55 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
               </div>
             )}
 
-            {recipe.tags.length > 0 && (
-              <div className="detail-section">
-                <div className="detail-section-label">Tags</div>
-                <div className="card-tags">
-                  {recipe.tags.map(tag => (
-                    <button key={tag} className="tag-chip" onClick={() => onTagClick(tag)}>{tag}</button>
-                  ))}
+            <div className="detail-section">
+              <div className="detail-section-label">Tags</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center' }}>
+                {recipe.tags.map(tag => (
+                  <span key={tag} className="tag-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <span onClick={() => onTagClick(tag)} style={{ cursor: 'pointer' }}>{tag}</span>
+                    <button
+                      onClick={() => saveTagsInline(recipe.tags.filter(t => t !== tag))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: '0.7rem', lineHeight: 1, opacity: 0.7 }}
+                    >✕</button>
+                  </span>
+                ))}
+                <div style={{ position: 'relative' }}>
+                  <input
+                    value={tagInput}
+                    onChange={e => {
+                      const val = e.target.value
+                      setTagInput(val)
+                      const partial = val.trim().toLowerCase()
+                      setTagInputSuggestions(partial.length >= 1
+                        ? allTags.filter(t => t.startsWith(partial) && !recipe.tags.includes(t) && t !== partial)
+                        : [])
+                    }}
+                    onKeyDown={e => {
+                      if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                        e.preventDefault()
+                        addTag(tagInput.replace(',', ''))
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setTagInputSuggestions([]), 150)}
+                    placeholder={savingTags ? '…' : '+ tag'}
+                    disabled={savingTags}
+                    style={{ border: '1px dashed var(--border)', borderRadius: 99, padding: '0.2rem 0.6rem', fontSize: '0.75rem', width: '4.5rem', background: 'transparent', outline: 'none', color: 'var(--text-muted)' }}
+                  />
+                  {tagInputSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: '8rem', marginTop: '0.2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                      {tagInputSuggestions.map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onMouseDown={e => { e.preventDefault(); addTag(t) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0.4rem', fontSize: '0.75rem', textAlign: 'left', borderRadius: 4, color: 'var(--text)' }}
+                        >{t}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
 
             <div className="detail-section">
               <div className="detail-section-label">URL</div>
