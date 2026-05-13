@@ -29,9 +29,10 @@ interface DetailPanelProps {
   onClose: () => void
   onDeleted: (id: number) => void
   onUpdated: (recipe: Recipe) => void
+  onTagClick: (tag: string) => void
 }
 
-function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated }: DetailPanelProps) {
+function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated, onTagClick }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
@@ -187,7 +188,9 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated }: DetailPan
               <div className="detail-section">
                 <div className="detail-section-label">Tags</div>
                 <div className="card-tags">
-                  {recipe.tags.map(tag => <span key={tag} className="tag-chip">{tag}</span>)}
+                  {recipe.tags.map(tag => (
+                    <button key={tag} className="tag-chip" onClick={() => onTagClick(tag)}>{tag}</button>
+                  ))}
                 </div>
               </div>
             )}
@@ -417,6 +420,11 @@ export default function HomePage() {
               />
               {allTags.length > 0 && (
                 <div className="tag-filter-bar">
+                  {activeTags.length > 0 && (
+                    <button className="tag-chip tag-chip-clear" onClick={() => { setActiveTags([]); fetchRecipes(token, query, []) }}>
+                      ✕ Clear
+                    </button>
+                  )}
                   {allTags.map(tag => (
                     <button
                       key={tag}
@@ -461,6 +469,7 @@ export default function HomePage() {
                 setRecipes(prev => prev.map(x => x.id === updated.id ? withName : x))
                 setSelected(withName)
               }}
+              onTagClick={tag => handleTagClick(tag)}
             />
           )}
         </div>
