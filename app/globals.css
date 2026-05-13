@@ -558,6 +558,12 @@ body {
   border-color: var(--accent);
 }
 
+.tag-chip-active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .tag-chip-clear {
   background: var(--accent);
   color: white;

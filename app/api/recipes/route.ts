@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const q = searchParams.get('q')
-  const tag = searchParams.get('tag')
+  const tagsParam = searchParams.get('tags')
+  const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(Boolean) : []
 
   let query = supabase
     .from('recipes')
@@ -44,8 +45,9 @@ export async function GET(req: NextRequest) {
   if (q) {
     query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,domain.ilike.%${q}%,notes.ilike.%${q}%`)
   }
-  if (tag) {
-    query = query.filter('tags', 'cs', JSON.stringify([tag]))
+  if (tags.length > 0) {
+    // OR: recipes that contain any of the selected tags
+    query = query.filter('tags', 'ov', JSON.stringify(tags))
   }
 
   const { data, error } = await query

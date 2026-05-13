@@ -231,7 +231,8 @@ export default function HomePage() {
   const [url, setUrl] = useState('')
   const [scraping, setScraping] = useState(false)
   const [query, setQuery] = useState('')
-  const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [activeTags, setActiveTags] = useState<string[]>([])
+  const [allTags, setAllTags] = useState<string[]>([])
   const [selected, setSelected] = useState<Recipe | null>(null)
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
 
@@ -252,10 +253,10 @@ export default function HomePage() {
     return () => subscription.unsubscribe()
   }, [router])
 
-  const fetchRecipes = useCallback(async (currentToken: string, q?: string, tag?: string | null) => {
+  const fetchRecipes = useCallback(async (currentToken: string, q?: string, tags?: string[]) => {
     const params = new URLSearchParams()
     if (q) params.set('q', q)
-    if (tag) params.set('tag', tag)
+    if (tags && tags.length > 0) params.set('tags', tags.join(','))
     const qs = params.toString()
     const res = await fetch(`/api/recipes${qs ? `?${qs}` : ''}`, {
       headers: { Authorization: `Bearer ${currentToken}` },
@@ -263,26 +264,31 @@ export default function HomePage() {
     if (res.ok) {
       const { recipes } = await res.json()
       setRecipes(recipes)
+      if (!tags || tags.length === 0) {
+        setAllTags(Array.from(new Set((recipes as Recipe[]).flatMap((r: Recipe) => r.tags))).sort() as string[])
+      }
     }
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    if (token) fetchRecipes(token, query, activeTag)
+    if (token) fetchRecipes(token, query, activeTags)
   }, [token, fetchRecipes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const q = e.target.value
     setQuery(q)
     if (searchTimeout) clearTimeout(searchTimeout)
-    const t = setTimeout(() => fetchRecipes(token, q, activeTag), 300)
+    const t = setTimeout(() => fetchRecipes(token, q, activeTags), 300)
     setSearchTimeout(t)
   }
 
   function handleTagClick(tag: string, e?: React.MouseEvent) {
     e?.stopPropagation()
-    const next = activeTag === tag ? null : tag
-    setActiveTag(next)
+    const next = activeTags.includes(tag)
+      ? activeTags.filter(t => t !== tag)
+      : [...activeTags, tag]
+    setActiveTags(next)
     fetchRecipes(token, query, next)
   }
 
@@ -347,7 +353,6 @@ export default function HomePage() {
   if (!user) return null
 
   const displayName = user.user_metadata?.display_name ?? user.email
-  const allTags = Array.from(new Set(recipes.flatMap(r => r.tags))).sort()
 
   return (
     <>
@@ -391,11 +396,12 @@ export default function HomePage() {
               />
               {allTags.length > 0 && (
                 <div className="tag-filter-bar">
-                  {activeTag && (
-                    <button className="tag-chip tag-chip-clear" onClick={() => handleTagClick(activeTag)}>✕ {activeTag}</button>
-                  )}
-                  {allTags.filter(t => t !== activeTag).map(tag => (
-                    <button key={tag} className="tag-chip" onClick={() => handleTagClick(tag)}>{tag}</button>
+                  {allTags.map(tag => (
+                    <button
+                      key={tag}
+                      className={`tag-chip${activeTags.includes(tag) ? ' tag-chip-active' : ''}`}
+                      onClick={() => handleTagClick(tag)}
+                    >{tag}</button>
                   ))}
                 </div>
               )}
