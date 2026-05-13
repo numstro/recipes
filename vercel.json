@@ -1,0 +1,14 @@
+{
+  "crons": [
+    {
+      "path": "/api/ping",
+      "schedule": "0 12 * * *"
+    }
+  ],
+  "functions": {
+    "api/scrape.py": {
+      "runtime": "python3.12",
+      "maxDuration": 30
+    }
+  }
+}
