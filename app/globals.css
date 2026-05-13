@@ -316,6 +316,12 @@ body {
   gap: 0.3rem;
 }
 
+.detail-added-by {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
 .detail-close {
   background: none;
   border: none;

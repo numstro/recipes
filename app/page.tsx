@@ -97,6 +97,7 @@ function DetailPanel({ recipe, token, onClose, onDeleted, onUpdated }: DetailPan
                 {recipe.domain} · {date}
               </div>
             )}
+            <div className="detail-added-by">Added by {recipe.added_by_name ?? 'someone'}</div>
           </div>
         </div>
         <button className="detail-close" onClick={onClose}>✕</button>
