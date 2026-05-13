@@ -82,6 +82,7 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [tagInputSuggestions, setTagInputSuggestions] = useState<string[]>([])
+  const [tagHighlightIndex, setTagHighlightIndex] = useState(-1)
   const [savingTags, setSavingTags] = useState(false)
   const [desiredServings, setDesiredServings] = useState<number | null>(recipe.servings)
 
@@ -302,18 +303,33 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
                     onChange={e => {
                       const val = e.target.value
                       setTagInput(val)
+                      setTagHighlightIndex(-1)
                       const partial = val.trim().toLowerCase()
                       setTagInputSuggestions(partial.length >= 1
                         ? allTags.filter(t => t.startsWith(partial) && !recipe.tags.includes(t) && t !== partial)
                         : [])
                     }}
                     onKeyDown={e => {
-                      if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                      if (e.key === 'ArrowDown') {
                         e.preventDefault()
-                        addTag(tagInput.replace(',', ''))
+                        setTagHighlightIndex(i => Math.min(i + 1, tagInputSuggestions.length - 1))
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault()
+                        setTagHighlightIndex(i => Math.max(i - 1, -1))
+                      } else if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault()
+                        if (tagHighlightIndex >= 0 && tagInputSuggestions[tagHighlightIndex]) {
+                          addTag(tagInputSuggestions[tagHighlightIndex])
+                        } else if (tagInput.trim()) {
+                          addTag(tagInput.replace(',', ''))
+                        }
+                        setTagHighlightIndex(-1)
+                      } else if (e.key === 'Escape') {
+                        setTagInputSuggestions([])
+                        setTagHighlightIndex(-1)
                       }
                     }}
-                    onBlur={() => setTimeout(() => setTagInputSuggestions([]), 150)}
+                    onBlur={() => setTimeout(() => { setTagInputSuggestions([]); setTagHighlightIndex(-1) }, 150)}
                     placeholder={savingTags ? '…' : 'add tag…'}
                     disabled={savingTags}
                     style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', minWidth: '5rem', flex: 1, color: 'var(--text)', padding: '0.1rem 0.15rem' }}
@@ -321,14 +337,14 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
                 </div>
                 {tagInputSuggestions.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem', zIndex: 10, display: 'flex', flexDirection: 'column', marginTop: '0.2rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                    {tagInputSuggestions.map(t => (
+                    {tagInputSuggestions.map((t, i) => (
                       <button
                         key={t}
                         type="button"
                         onMouseDown={e => { e.preventDefault(); addTag(t) }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.35rem 0.6rem', fontSize: '0.875rem', textAlign: 'left', borderRadius: 4, color: 'var(--text)' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#f5f3f0')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                        onMouseEnter={() => setTagHighlightIndex(i)}
+                        onMouseLeave={() => setTagHighlightIndex(-1)}
+                        style={{ background: i === tagHighlightIndex ? '#f5f3f0' : 'none', border: 'none', cursor: 'pointer', padding: '0.35rem 0.6rem', fontSize: '0.875rem', textAlign: 'left', borderRadius: 4, color: 'var(--text)', fontWeight: i === tagHighlightIndex ? 500 : 400 }}
                       >{t}</button>
                     ))}
                   </div>
