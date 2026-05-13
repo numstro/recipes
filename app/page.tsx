@@ -78,11 +78,13 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
   const [editIngredients, setEditIngredients] = useState(recipe.ingredients.join('\n'))
   const [editSteps, setEditSteps] = useState(recipe.steps.join('\n\n'))
   const [editTags, setEditTags] = useState(recipe.tags.join(', '))
+  const [editServings, setEditServings] = useState(recipe.servings?.toString() ?? '')
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   const [desiredServings, setDesiredServings] = useState<number | null>(recipe.servings)
 
   useEffect(() => {
     setDesiredServings(recipe.servings)
+    setEditServings(recipe.servings?.toString() ?? '')
     setEditing(false)
   }, [recipe.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -96,6 +98,7 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
     setEditIngredients(recipe.ingredients.join('\n'))
     setEditSteps(recipe.steps.join('\n\n'))
     setEditTags(recipe.tags.join(', '))
+    setEditServings(recipe.servings?.toString() ?? '')
     setEditing(true)
   }
 
@@ -108,7 +111,7 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
     const res = await fetch(`/api/recipes/${recipe.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ title: editTitle, description: recipe.description, notes: editNotes, ingredients, steps, tags }),
+      body: JSON.stringify({ title: editTitle, description: recipe.description, notes: editNotes, ingredients, steps, tags, servings: editServings ? parseInt(editServings) : null }),
     })
     setSaving(false)
     if (res.ok) {
@@ -203,6 +206,11 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
             </div>
 
             <div className="detail-section">
+              <div className="detail-section-label">Serves <span className="edit-hint">default serving size</span></div>
+              <input className="edit-input" type="number" min={1} value={editServings} onChange={e => setEditServings(e.target.value)} placeholder="e.g. 4" style={{ fontSize: 15, width: '6rem' }} />
+            </div>
+
+            <div className="detail-section">
               <div className="detail-section-label">Notes</div>
               <textarea className="edit-input" rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Your notes…" style={{ fontSize: 15 }} />
             </div>
@@ -235,24 +243,22 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
               <div className="detail-section">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                   <div className="detail-section-label" style={{ marginBottom: 0 }}>Ingredients</div>
-                  {recipe.servings != null && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      <span>Serves</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={desiredServings ?? ''}
-                        onChange={e => setDesiredServings(e.target.value ? parseInt(e.target.value) : null)}
-                        style={{ width: '3rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.75rem', textAlign: 'center', background: scaleFactor !== 1 ? '#fef3ee' : 'var(--bg)' }}
-                      />
-                      {scaleFactor !== 1 && (
-                        <button
-                          onClick={() => setDesiredServings(recipe.servings)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.7rem', padding: 0 }}
-                        >reset</button>
-                      )}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <span>Serves</span>
+                    {recipe.servings != null ? (
+                      <select
+                        value={desiredServings ?? recipe.servings}
+                        onChange={e => setDesiredServings(parseInt(e.target.value))}
+                        style={{ padding: '0.15rem 0.25rem', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.75rem', background: scaleFactor !== 1 ? '#fef3ee' : 'var(--bg)', cursor: 'pointer' }}
+                      >
+                        {Array.from({ length: recipe.servings * 2 }, (_, i) => i + 1).map(n => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span style={{ fontStyle: 'italic' }}>N/A</span>
+                    )}
+                  </div>
                 </div>
                 <div className="ingredients-list">
                   {recipe.ingredients.map((ing, i) =>
