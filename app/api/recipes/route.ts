@@ -121,6 +121,7 @@ export async function POST(req: NextRequest) {
           .from('recipes')
           .update({
             deleted_at: null,
+            saved_at: new Date().toISOString(),
             title: title || existing.title,
             description: description || existing.description,
             image_url: image_url || existing.image_url,
