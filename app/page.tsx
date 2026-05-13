@@ -29,51 +29,42 @@ interface RecipeCardProps {
   token: string
   onDeleted: (id: number) => void
   onUpdated: (recipe: Recipe) => void
+  onTagClick: (tag: string) => void
 }
 
-function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated }: RecipeCardProps) {
+function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated, onTagClick }: RecipeCardProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [showIngredients, setShowIngredients] = useState(recipe.ingredients.length > 0)
-  const [showSteps, setShowSteps] = useState(recipe.steps.length > 0)
+  const [showIngredients, setShowIngredients] = useState(false)
+  const [showSteps, setShowSteps] = useState(false)
 
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
-  const [editDescription, setEditDescription] = useState(recipe.description ?? '')
   const [editNotes, setEditNotes] = useState(recipe.notes)
   const [editIngredients, setEditIngredients] = useState(recipe.ingredients.join('\n'))
   const [editSteps, setEditSteps] = useState(recipe.steps.join('\n\n'))
+  const [editTags, setEditTags] = useState(recipe.tags.join(', '))
 
   const isOwner = recipe.added_by === currentUserId
 
   function startEdit() {
     setEditTitle(recipe.title ?? '')
-    setEditDescription(recipe.description ?? '')
     setEditNotes(recipe.notes)
     setEditIngredients(recipe.ingredients.join('\n'))
     setEditSteps(recipe.steps.join('\n\n'))
+    setEditTags(recipe.tags.join(', '))
     setEditing(true)
-    // Scroll into view on mobile
-    setTimeout(() => {
-      document.getElementById(`card-${recipe.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 50)
   }
 
   async function saveEdit() {
     setSaving(true)
     const ingredients = editIngredients.split('\n').map(s => s.trim()).filter(Boolean)
     const steps = editSteps.split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
+    const tags = editTags.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 
     const res = await fetch(`/api/recipes/${recipe.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        title: editTitle,
-        description: editDescription,
-        notes: editNotes,
-        ingredients,
-        steps,
-        tags: recipe.tags,
-      }),
+      body: JSON.stringify({ title: editTitle, description: recipe.description, notes: editNotes, ingredients, steps, tags }),
     })
     setSaving(false)
     if (res.ok) {
@@ -108,14 +99,9 @@ function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated }: Reci
           </a>
           {recipe.domain && (
             <div className="card-domain">
-              {recipe.favicon_url && (
-                <img className="card-favicon" src={recipe.favicon_url} alt="" />
-              )}
+              {recipe.favicon_url && <img className="card-favicon" src={recipe.favicon_url} alt="" />}
               {recipe.domain}
             </div>
-          )}
-          {recipe.description && (
-            <div className="card-description">{recipe.description}</div>
           )}
         </div>
       </div>
@@ -123,19 +109,14 @@ function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated }: Reci
       {editing ? (
         <div className="edit-form">
           <label className="edit-label">Title</label>
+          <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ fontSize: 16 }} />
+
+          <label className="edit-label">Tags (comma-separated)</label>
           <input
             className="edit-input"
-            value={editTitle}
-            onChange={e => setEditTitle(e.target.value)}
-            style={{ fontSize: 16 }}
-          />
-
-          <label className="edit-label">Description</label>
-          <textarea
-            className="edit-input"
-            rows={2}
-            value={editDescription}
-            onChange={e => setEditDescription(e.target.value)}
+            value={editTags}
+            onChange={e => setEditTags(e.target.value)}
+            placeholder="e.g. asian, quick, chicken"
             style={{ fontSize: 16 }}
           />
 
@@ -150,64 +131,57 @@ function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated }: Reci
           />
 
           <label className="edit-label">Ingredients (one per line)</label>
-          <textarea
-            className="edit-input"
-            rows={6}
-            value={editIngredients}
-            onChange={e => setEditIngredients(e.target.value)}
-            style={{ fontSize: 16 }}
-          />
+          <textarea className="edit-input" rows={6} value={editIngredients} onChange={e => setEditIngredients(e.target.value)} style={{ fontSize: 16 }} />
 
           <label className="edit-label">Steps (blank line between steps)</label>
-          <textarea
-            className="edit-input"
-            rows={8}
-            value={editSteps}
-            onChange={e => setEditSteps(e.target.value)}
-            style={{ fontSize: 16 }}
-          />
+          <textarea className="edit-input" rows={8} value={editSteps} onChange={e => setEditSteps(e.target.value)} style={{ fontSize: 16 }} />
 
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-            <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button className="btn btn-secondary" onClick={() => setEditing(false)}>
-              Cancel
-            </button>
+            <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+            <button className="btn btn-secondary" onClick={() => setEditing(false)}>Cancel</button>
           </div>
         </div>
       ) : (
         <div className="card-body">
-          {recipe.notes && <div className="notes-view">{recipe.notes}</div>}
-
-          {recipe.ingredients.length > 0 && (
-            <>
-              <button className="section-toggle" onClick={() => setShowIngredients(v => !v)}>
-                {showIngredients ? '▼' : '▶'} Ingredients ({recipe.ingredients.length})
-              </button>
-              {showIngredients && (
-                <div className="section-content">
-                  <ul className="ingredients-list">
-                    {recipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
-                  </ul>
-                </div>
-              )}
-            </>
+          {recipe.tags.length > 0 && (
+            <div className="card-tags">
+              {recipe.tags.map(tag => (
+                <button key={tag} className="tag-chip" onClick={() => onTagClick(tag)}>{tag}</button>
+              ))}
+            </div>
           )}
 
-          {recipe.steps.length > 0 && (
-            <>
-              <button className="section-toggle" onClick={() => setShowSteps(v => !v)}>
-                {showSteps ? '▼' : '▶'} Steps ({recipe.steps.length})
-              </button>
-              {showSteps && (
-                <div className="section-content">
-                  <ol className="steps-list">
-                    {recipe.steps.map((step, i) => <li key={i}>{step}</li>)}
-                  </ol>
-                </div>
+          {recipe.notes && <div className="notes-view">{recipe.notes}</div>}
+
+          {(recipe.ingredients.length > 0 || recipe.steps.length > 0) && (
+            <div className="card-toggles">
+              {recipe.ingredients.length > 0 && (
+                <button className="section-toggle" onClick={() => setShowIngredients(v => !v)}>
+                  {showIngredients ? '▼' : '▶'} Ingredients ({recipe.ingredients.length})
+                </button>
               )}
-            </>
+              {recipe.steps.length > 0 && (
+                <button className="section-toggle" onClick={() => setShowSteps(v => !v)}>
+                  {showSteps ? '▼' : '▶'} Steps ({recipe.steps.length})
+                </button>
+              )}
+            </div>
+          )}
+
+          {showIngredients && recipe.ingredients.length > 0 && (
+            <div className="section-content">
+              <ul className="ingredients-list">
+                {recipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {showSteps && recipe.steps.length > 0 && (
+            <div className="section-content">
+              <ol className="steps-list">
+                {recipe.steps.map((step, i) => <li key={i}>{step}</li>)}
+              </ol>
+            </div>
           )}
         </div>
       )}
@@ -218,12 +192,8 @@ function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated }: Reci
         </div>
         {isOwner && !editing && (
           <div className="card-actions">
-            <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }} onClick={startEdit}>
-              Edit
-            </button>
-            <button className="btn btn-danger" onClick={handleDelete}>
-              Delete
-            </button>
+            <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }} onClick={startEdit}>Edit</button>
+            <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
           </div>
         )}
       </div>
@@ -242,24 +212,19 @@ export default function HomePage() {
   const [url, setUrl] = useState('')
   const [scraping, setScraping] = useState(false)
   const [query, setQuery] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     supabaseClient.auth.getSession().then(({ data }) => {
       const session = data.session
-      if (!session) {
-        router.push('/login')
-        return
-      }
+      if (!session) { router.push('/login'); return }
       setUser(session.user)
       setToken(session.access_token)
     })
 
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        router.push('/login')
-        return
-      }
+      if (!session) { router.push('/login'); return }
       setUser(session.user)
       setToken(session.access_token)
     })
@@ -267,9 +232,12 @@ export default function HomePage() {
     return () => subscription.unsubscribe()
   }, [router])
 
-  const fetchRecipes = useCallback(async (currentToken: string, q?: string) => {
-    const params = q ? `?q=${encodeURIComponent(q)}` : ''
-    const res = await fetch(`/api/recipes${params}`, {
+  const fetchRecipes = useCallback(async (currentToken: string, q?: string, tag?: string | null) => {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (tag) params.set('tag', tag)
+    const qs = params.toString()
+    const res = await fetch(`/api/recipes${qs ? `?${qs}` : ''}`, {
       headers: { Authorization: `Bearer ${currentToken}` },
     })
     if (res.ok) {
@@ -280,15 +248,21 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    if (token) fetchRecipes(token)
-  }, [token, fetchRecipes])
+    if (token) fetchRecipes(token, query, activeTag)
+  }, [token, fetchRecipes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const q = e.target.value
     setQuery(q)
     if (searchTimeout) clearTimeout(searchTimeout)
-    const t = setTimeout(() => fetchRecipes(token, q), 300)
+    const t = setTimeout(() => fetchRecipes(token, q, activeTag), 300)
     setSearchTimeout(t)
+  }
+
+  function handleTagClick(tag: string) {
+    const next = activeTag === tag ? null : tag
+    setActiveTag(next)
+    fetchRecipes(token, query, next)
   }
 
   async function handleAddUrl(e: React.FormEvent) {
@@ -308,9 +282,7 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmed }),
       })
-      if (res.ok) {
-        scraped = await res.json()
-      }
+      if (res.ok) scraped = await res.json()
     } catch {
       // scrape failed — save with just the URL
     }
@@ -354,6 +326,9 @@ export default function HomePage() {
 
   const displayName = user.user_metadata?.display_name ?? user.email
 
+  // Collect all unique tags across loaded recipes for the filter bar
+  const allTags = Array.from(new Set(recipes.flatMap(r => r.tags))).sort()
+
   return (
     <>
       <nav className="nav">
@@ -394,12 +369,25 @@ export default function HomePage() {
           />
         </div>
 
+        {allTags.length > 0 && (
+          <div className="tag-filter-bar">
+            {activeTag && (
+              <button className="tag-chip tag-chip-clear" onClick={() => handleTagClick(activeTag)}>
+                ✕ {activeTag}
+              </button>
+            )}
+            {allTags.filter(t => t !== activeTag).map(tag => (
+              <button key={tag} className="tag-chip" onClick={() => handleTagClick(tag)}>{tag}</button>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <div className="empty-state">Loading…</div>
         ) : recipes.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">{query ? '🔍' : '🍳'}</div>
-            <div>{query ? 'No recipes match your search.' : 'No recipes yet. Add the first one!'}</div>
+            <div className="empty-state-icon">{query || activeTag ? '🔍' : '🍳'}</div>
+            <div>{query || activeTag ? 'No recipes match.' : 'No recipes yet. Add the first one!'}</div>
           </div>
         ) : (
           <div className="recipe-grid">
@@ -411,6 +399,7 @@ export default function HomePage() {
                 token={token}
                 onDeleted={id => setRecipes(prev => prev.filter(x => x.id !== id))}
                 onUpdated={updated => setRecipes(prev => prev.map(x => x.id === updated.id ? { ...updated, added_by_name: x.added_by_name } : x))}
+                onTagClick={handleTagClick}
               />
             ))}
           </div>

@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const q = searchParams.get('q')
+  const tag = searchParams.get('tag')
 
   let query = supabase
     .from('recipes')
@@ -42,6 +43,9 @@ export async function GET(req: NextRequest) {
 
   if (q) {
     query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,domain.ilike.%${q}%,notes.ilike.%${q}%`)
+  }
+  if (tag) {
+    query = query.contains('tags', [tag])
   }
 
   const { data, error } = await query
