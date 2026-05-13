@@ -108,6 +108,44 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     if (error.code === '23505') {
+      // Check if it's soft-deleted — if so, restore it
+      const { data: existing } = await supabase
+        .from('recipes')
+        .select()
+        .eq('url', url)
+        .not('deleted_at', 'is', null)
+        .single()
+
+      if (existing) {
+        const { data: restored, error: restoreError } = await supabase
+          .from('recipes')
+          .update({
+            deleted_at: null,
+            title: title || existing.title,
+            description: description || existing.description,
+            image_url: image_url || existing.image_url,
+            favicon_url: favicon_url || existing.favicon_url,
+            domain: domain || existing.domain,
+            ingredients: ingredients?.length ? ingredients : existing.ingredients,
+            steps: steps?.length ? steps : existing.steps,
+            added_by: user.id,
+          })
+          .eq('url', url)
+          .select()
+          .single()
+
+        if (restoreError) return NextResponse.json({ error: restoreError.message }, { status: 500 })
+
+        await supabase.from('recipe_logs').insert({
+          recipe_id: restored.id,
+          user_id: user.id,
+          ip_address: ip,
+          action: 'create',
+        })
+
+        return NextResponse.json({ recipe: restored }, { status: 201 })
+      }
+
       return NextResponse.json({ error: 'Recipe already saved' }, { status: 409 })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
