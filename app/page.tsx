@@ -23,21 +23,18 @@ interface Recipe {
   updated_at: string
 }
 
-interface RecipeCardProps {
+interface DetailPanelProps {
   recipe: Recipe
   currentUserId: string
   token: string
+  onClose: () => void
   onDeleted: (id: number) => void
   onUpdated: (recipe: Recipe) => void
-  onTagClick: (tag: string) => void
 }
 
-function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated, onTagClick }: RecipeCardProps) {
+function DetailPanel({ recipe, currentUserId, token, onClose, onDeleted, onUpdated }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [showIngredients, setShowIngredients] = useState(false)
-  const [showSteps, setShowSteps] = useState(false)
-
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
   const [editNotes, setEditNotes] = useState(recipe.notes)
   const [editIngredients, setEditIngredients] = useState(recipe.ingredients.join('\n'))
@@ -80,122 +77,149 @@ function RecipeCard({ recipe, currentUserId, token, onDeleted, onUpdated, onTagC
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     })
-    if (res.ok) onDeleted(recipe.id)
+    if (res.ok) {
+      onDeleted(recipe.id)
+      onClose()
+    }
   }
 
   const date = new Date(recipe.saved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   return (
-    <div className="recipe-card" id={`card-${recipe.id}`}>
-      <div className="card-header">
-        {recipe.image_url ? (
-          <img className="card-image" src={recipe.image_url} alt="" loading="lazy" />
-        ) : (
-          <div className="card-image-placeholder">🍽️</div>
-        )}
-        <div className="card-meta">
-          <a className="card-title" href={recipe.url} target="_blank" rel="noopener noreferrer">
-            {recipe.title || recipe.url}
-          </a>
-          {recipe.domain && (
-            <div className="card-domain">
-              {recipe.favicon_url && <img className="card-favicon" src={recipe.favicon_url} alt="" />}
-              {recipe.domain}
-            </div>
-          )}
+    <div className="detail-panel">
+      <div className="detail-header">
+        <div className="detail-header-meta">
+          {recipe.image_url && <img className="detail-image" src={recipe.image_url} alt="" />}
+          <div>
+            <a className="detail-title" href={recipe.url} target="_blank" rel="noopener noreferrer">
+              {recipe.title || recipe.url}
+            </a>
+            {recipe.domain && (
+              <div className="detail-domain">
+                {recipe.favicon_url && <img className="card-favicon" src={recipe.favicon_url} alt="" />}
+                {recipe.domain} · {date}
+              </div>
+            )}
+          </div>
         </div>
+        <button className="detail-close" onClick={onClose}>✕</button>
       </div>
 
-      {editing ? (
-        <div className="edit-form">
-          <label className="edit-label">Title</label>
-          <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ fontSize: 16 }} />
-
-          <label className="edit-label">Tags (comma-separated)</label>
-          <input
-            className="edit-input"
-            value={editTags}
-            onChange={e => setEditTags(e.target.value)}
-            placeholder="e.g. asian, quick, chicken"
-            style={{ fontSize: 16 }}
-          />
-
-          <label className="edit-label">Notes</label>
-          <textarea
-            className="edit-input"
-            rows={3}
-            value={editNotes}
-            onChange={e => setEditNotes(e.target.value)}
-            placeholder="Your notes about this recipe…"
-            style={{ fontSize: 16 }}
-          />
-
-          <label className="edit-label">Ingredients (one per line)</label>
-          <textarea className="edit-input" rows={6} value={editIngredients} onChange={e => setEditIngredients(e.target.value)} style={{ fontSize: 16 }} />
-
-          <label className="edit-label">Steps (blank line between steps)</label>
-          <textarea className="edit-input" rows={8} value={editSteps} onChange={e => setEditSteps(e.target.value)} style={{ fontSize: 16 }} />
-
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-            <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-            <button className="btn btn-secondary" onClick={() => setEditing(false)}>Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <div className="card-body">
-          {recipe.tags.length > 0 && (
-            <div className="card-tags">
-              {recipe.tags.map(tag => (
-                <button key={tag} className="tag-chip" onClick={() => onTagClick(tag)}>{tag}</button>
-              ))}
+      <div className="detail-body">
+        {editing ? (
+          <>
+            <div className="detail-section">
+              <div className="detail-section-label">Title</div>
+              <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ fontSize: 15 }} />
             </div>
-          )}
 
-          {recipe.notes && <div className="notes-view">{recipe.notes}</div>}
-
-          {(recipe.ingredients.length > 0 || recipe.steps.length > 0) && (
-            <div className="card-toggles">
-              {recipe.ingredients.length > 0 && (
-                <button className="section-toggle" onClick={() => setShowIngredients(v => !v)}>
-                  {showIngredients ? '▼' : '▶'} Ingredients ({recipe.ingredients.length})
-                </button>
-              )}
-              {recipe.steps.length > 0 && (
-                <button className="section-toggle" onClick={() => setShowSteps(v => !v)}>
-                  {showSteps ? '▼' : '▶'} Steps ({recipe.steps.length})
-                </button>
-              )}
+            <div className="detail-section">
+              <div className="detail-section-label">Tags (comma-separated)</div>
+              <input className="edit-input" value={editTags} onChange={e => setEditTags(e.target.value)} placeholder="e.g. asian, quick, chicken" style={{ fontSize: 15 }} />
             </div>
-          )}
 
-          {showIngredients && recipe.ingredients.length > 0 && (
-            <div className="section-content">
-              <ul className="ingredients-list">
-                {recipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
-              </ul>
+            <div className="detail-section">
+              <div className="detail-section-label">Notes</div>
+              <textarea className="edit-input" rows={3} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Your notes…" style={{ fontSize: 15 }} />
             </div>
-          )}
 
-          {showSteps && recipe.steps.length > 0 && (
-            <div className="section-content">
-              <ol className="steps-list">
-                {recipe.steps.map((step, i) => <li key={i}>{step}</li>)}
-              </ol>
+            <div className="detail-section">
+              <div className="detail-section-label">Ingredients (one per line)</div>
+              <textarea className="edit-input" rows={8} value={editIngredients} onChange={e => setEditIngredients(e.target.value)} style={{ fontSize: 15 }} />
             </div>
-          )}
-        </div>
-      )}
 
-      <div className="card-footer">
-        <div className="card-added-by">
-          Added by {recipe.added_by_name ?? 'someone'} · {date}
-        </div>
-        {isOwner && !editing && (
-          <div className="card-actions">
-            <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }} onClick={startEdit}>Edit</button>
-            <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
-          </div>
+            <div className="detail-section">
+              <div className="detail-section-label">Steps (blank line between steps)</div>
+              <textarea className="edit-input" rows={10} value={editSteps} onChange={e => setEditSteps(e.target.value)} style={{ fontSize: 15 }} />
+            </div>
+
+            <div className="detail-actions">
+              <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+              <button className="btn btn-secondary" onClick={() => setEditing(false)}>Cancel</button>
+            </div>
+          </>
+        ) : (
+          <>
+            {recipe.notes && (
+              <div className="detail-section">
+                <div className="detail-section-label">Notes</div>
+                <div className="detail-notes">{recipe.notes}</div>
+              </div>
+            )}
+
+            {recipe.ingredients.length > 0 && (
+              <div className="detail-section">
+                <div className="detail-section-label">Ingredients</div>
+                <ul className="ingredients-list">
+                  {recipe.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {recipe.steps.length > 0 && (
+              <div className="detail-section">
+                <div className="detail-section-label">Steps</div>
+                <ol className="steps-list">
+                  {recipe.steps.map((step, i) => <li key={i}>{step}</li>)}
+                </ol>
+              </div>
+            )}
+
+            {recipe.tags.length > 0 && (
+              <div className="detail-section">
+                <div className="detail-section-label">Tags</div>
+                <div className="card-tags">
+                  {recipe.tags.map(tag => <span key={tag} className="tag-chip">{tag}</span>)}
+                </div>
+              </div>
+            )}
+
+            <div className="detail-section">
+              <div className="detail-section-label">URL</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <a className="detail-url" href={recipe.url} target="_blank" rel="noopener noreferrer">{recipe.url}</a>
+              </div>
+            </div>
+
+            {isOwner && (
+              <div className="detail-actions">
+                <button className="btn btn-secondary" onClick={startEdit}>Edit</button>
+                <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
+              </div>
+            )}
+          </>
         )}
+      </div>
+    </div>
+  )
+}
+
+function RecipeRow({ recipe, selected, onClick, onTagClick }: {
+  recipe: Recipe
+  selected: boolean
+  onClick: () => void
+  onTagClick: (tag: string, e: React.MouseEvent) => void
+}) {
+  const date = new Date(recipe.saved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+  return (
+    <div className={`recipe-row${selected ? ' selected' : ''}`} onClick={onClick}>
+      {recipe.image_url ? (
+        <img className="row-thumb" src={recipe.image_url} alt="" loading="lazy" />
+      ) : (
+        <div className="row-thumb row-thumb-placeholder">🍽️</div>
+      )}
+      <div className="row-body">
+        <div className="row-title">{recipe.title || recipe.url}</div>
+        <div className="row-meta">
+          {recipe.favicon_url && <img className="card-favicon" src={recipe.favicon_url} alt="" />}
+          {recipe.domain && <span>{recipe.domain}</span>}
+          <span>·</span>
+          <span>{date}</span>
+          {recipe.tags.map(tag => (
+            <button key={tag} className="tag-chip tag-chip-sm" onClick={e => onTagClick(tag, e)}>{tag}</button>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -213,6 +237,7 @@ export default function HomePage() {
   const [scraping, setScraping] = useState(false)
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Recipe | null>(null)
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -259,7 +284,8 @@ export default function HomePage() {
     setSearchTimeout(t)
   }
 
-  function handleTagClick(tag: string) {
+  function handleTagClick(tag: string, e?: React.MouseEvent) {
+    e?.stopPropagation()
     const next = activeTag === tag ? null : tag
     setActiveTag(next)
     fetchRecipes(token, query, next)
@@ -316,6 +342,7 @@ export default function HomePage() {
     setRecipes(prev => [withName, ...prev])
     setUrl('')
     setStatus('')
+    setSelected(withName)
   }
 
   async function handleSignOut() {
@@ -325,8 +352,6 @@ export default function HomePage() {
   if (!user) return null
 
   const displayName = user.user_metadata?.display_name ?? user.email
-
-  // Collect all unique tags across loaded recipes for the filter bar
   const allTags = Array.from(new Set(recipes.flatMap(r => r.tags))).sort()
 
   return (
@@ -340,70 +365,84 @@ export default function HomePage() {
       </nav>
 
       <div className="page">
-        <form className="add-form" onSubmit={handleAddUrl}>
-          <input
-            className="url-input"
-            type="url"
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            placeholder="Paste a recipe URL…"
-            required
-          />
-          <button className="btn btn-primary" type="submit" disabled={scraping}>
-            {scraping ? 'Saving…' : 'Add Recipe'}
-          </button>
+        <div className="toolbar">
+          <form className="add-form" onSubmit={handleAddUrl}>
+            <input
+              className="url-input"
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="Paste a recipe URL…"
+              required
+            />
+            <button className="btn btn-primary" type="submit" disabled={scraping}>
+              {scraping ? 'Saving…' : 'Add'}
+            </button>
+          </form>
           {status && (
-            <div className={`status-bar${statusError ? ' error' : ''}`} style={{ width: '100%', marginTop: 0 }}>
-              {status}
-            </div>
+            <div className={`status-bar${statusError ? ' error' : ''}`}>{status}</div>
           )}
-        </form>
-
-        <div className="search-bar">
-          <input
-            className="search-input"
-            type="search"
-            value={query}
-            onChange={handleSearchChange}
-            placeholder="Search recipes…"
-          />
         </div>
 
-        {allTags.length > 0 && (
-          <div className="tag-filter-bar">
-            {activeTag && (
-              <button className="tag-chip tag-chip-clear" onClick={() => handleTagClick(activeTag)}>
-                ✕ {activeTag}
-              </button>
-            )}
-            {allTags.filter(t => t !== activeTag).map(tag => (
-              <button key={tag} className="tag-chip" onClick={() => handleTagClick(tag)}>{tag}</button>
-            ))}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="empty-state">Loading…</div>
-        ) : recipes.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">{query || activeTag ? '🔍' : '🍳'}</div>
-            <div>{query || activeTag ? 'No recipes match.' : 'No recipes yet. Add the first one!'}</div>
-          </div>
-        ) : (
-          <div className="recipe-grid">
-            {recipes.map(r => (
-              <RecipeCard
-                key={r.id}
-                recipe={r}
-                currentUserId={user.id}
-                token={token}
-                onDeleted={id => setRecipes(prev => prev.filter(x => x.id !== id))}
-                onUpdated={updated => setRecipes(prev => prev.map(x => x.id === updated.id ? { ...updated, added_by_name: x.added_by_name } : x))}
-                onTagClick={handleTagClick}
+        <div className="list-detail-layout">
+          <div className={`list-pane${selected ? ' has-detail' : ''}`}>
+            <div className="list-controls">
+              <input
+                className="search-input"
+                type="search"
+                value={query}
+                onChange={handleSearchChange}
+                placeholder="Search…"
               />
-            ))}
+              {allTags.length > 0 && (
+                <div className="tag-filter-bar">
+                  {activeTag && (
+                    <button className="tag-chip tag-chip-clear" onClick={() => handleTagClick(activeTag)}>✕ {activeTag}</button>
+                  )}
+                  {allTags.filter(t => t !== activeTag).map(tag => (
+                    <button key={tag} className="tag-chip" onClick={() => handleTagClick(tag)}>{tag}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {loading ? (
+              <div className="empty-state">Loading…</div>
+            ) : recipes.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">{query || activeTag ? '🔍' : '🍳'}</div>
+                <div>{query || activeTag ? 'No recipes match.' : 'No recipes yet.'}</div>
+              </div>
+            ) : (
+              <div className="recipe-list">
+                {recipes.map(r => (
+                  <RecipeRow
+                    key={r.id}
+                    recipe={r}
+                    selected={selected?.id === r.id}
+                    onClick={() => setSelected(r)}
+                    onTagClick={handleTagClick}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          {selected && (
+            <DetailPanel
+              recipe={selected}
+              currentUserId={user.id}
+              token={token}
+              onClose={() => setSelected(null)}
+              onDeleted={id => { setRecipes(prev => prev.filter(x => x.id !== id)); setSelected(null) }}
+              onUpdated={updated => {
+                const withName = { ...updated, added_by_name: selected.added_by_name }
+                setRecipes(prev => prev.map(x => x.id === updated.id ? withName : x))
+                setSelected(withName)
+              }}
+            />
+          )}
+        </div>
       </div>
     </>
   )
