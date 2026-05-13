@@ -8,6 +8,11 @@ function checkAdmin(req: NextRequest) {
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!checkAdmin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { id } = await params
+
+  // Nullify FK references before deleting the auth user
+  await supabase.from('recipes').update({ added_by: null }).eq('added_by', id)
+  await supabase.from('recipe_logs').update({ user_id: null }).eq('user_id', id)
+
   const { error } = await supabase.auth.admin.deleteUser(id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
