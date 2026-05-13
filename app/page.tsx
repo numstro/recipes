@@ -282,17 +282,21 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
 
             <div className="detail-section">
               <div className="detail-section-label">Tags</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center' }}>
-                {recipe.tags.map(tag => (
-                  <span key={tag} className="tag-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <span onClick={() => onTagClick(tag)} style={{ cursor: 'pointer' }}>{tag}</span>
-                    <button
-                      onClick={() => saveTagsInline(recipe.tags.filter(t => t !== tag))}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: '0.7rem', lineHeight: 1, opacity: 0.7 }}
-                    >✕</button>
-                  </span>
-                ))}
-                <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative' }}>
+                <div
+                  className="edit-input"
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center', padding: '0.4rem 0.5rem', cursor: 'text', minHeight: '2.25rem' }}
+                  onClick={e => { if (e.target === e.currentTarget) (e.currentTarget.querySelector('input') as HTMLInputElement)?.focus() }}
+                >
+                  {recipe.tags.map(tag => (
+                    <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'var(--accent)', color: 'white', borderRadius: 99, padding: '0.15rem 0.5rem', fontSize: '0.75rem', fontWeight: 500 }}>
+                      <span onClick={() => onTagClick(tag)} style={{ cursor: 'pointer' }}>{tag}</span>
+                      <button
+                        onClick={() => saveTagsInline(recipe.tags.filter(t => t !== tag))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white', padding: 0, fontSize: '0.65rem', lineHeight: 1, opacity: 0.8 }}
+                      >✕</button>
+                    </span>
+                  ))}
                   <input
                     value={tagInput}
                     onChange={e => {
@@ -310,23 +314,25 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
                       }
                     }}
                     onBlur={() => setTimeout(() => setTagInputSuggestions([]), 150)}
-                    placeholder={savingTags ? '…' : '+ tag'}
+                    placeholder={savingTags ? '…' : 'add tag…'}
                     disabled={savingTags}
-                    style={{ border: '1px dashed var(--border)', borderRadius: 99, padding: '0.2rem 0.6rem', fontSize: '0.75rem', width: '4.5rem', background: 'transparent', outline: 'none', color: 'var(--text-muted)' }}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.85rem', minWidth: '5rem', flex: 1, color: 'var(--text)', padding: '0.1rem 0.15rem' }}
                   />
-                  {tagInputSuggestions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: '8rem', marginTop: '0.2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                      {tagInputSuggestions.map(t => (
-                        <button
-                          key={t}
-                          type="button"
-                          onMouseDown={e => { e.preventDefault(); addTag(t) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem 0.4rem', fontSize: '0.75rem', textAlign: 'left', borderRadius: 4, color: 'var(--text)' }}
-                        >{t}</button>
-                      ))}
-                    </div>
-                  )}
                 </div>
+                {tagInputSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem', zIndex: 10, display: 'flex', flexDirection: 'column', marginTop: '0.2rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                    {tagInputSuggestions.map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); addTag(t) }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.35rem 0.6rem', fontSize: '0.875rem', textAlign: 'left', borderRadius: 4, color: 'var(--text)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#f5f3f0')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                      >{t}</button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
