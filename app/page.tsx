@@ -432,8 +432,8 @@ export default function HomePage() {
               <div className="empty-state">Loading…</div>
             ) : recipes.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">{query || activeTag ? '🔍' : '🍳'}</div>
-                <div>{query || activeTag ? 'No recipes match.' : 'No recipes yet.'}</div>
+                <div className="empty-state-icon">{query || activeTags.length > 0 ? '🔍' : '🍳'}</div>
+                <div>{query || activeTags.length > 0 ? 'No recipes match.' : 'No recipes yet.'}</div>
               </div>
             ) : (
               <div className="recipe-list">
