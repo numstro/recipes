@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,domain.ilike.%${q}%,notes.ilike.%${q}%`)
   }
   if (tag) {
-    query = query.contains('tags', [tag])
+    query = query.filter('tags', 'cs', JSON.stringify([tag]))
   }
 
   const { data, error } = await query
