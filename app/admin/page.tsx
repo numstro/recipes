@@ -322,6 +322,9 @@ export default function AdminPage() {
                       {r.title || r.url}
                     </a>
                     {r.domain && <div className="card-domain">{r.domain}</div>}
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', wordBreak: 'break-all' }}>
+                      <a href={r.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>{r.url}</a>
+                    </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                       Added by {r.added_by_name ?? 'unknown'} · Deleted {fmt(r.deleted_at)}
                     </div>
