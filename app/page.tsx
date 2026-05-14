@@ -437,6 +437,11 @@ export default function HomePage() {
     return () => subscription.unsubscribe()
   }, [router])
 
+  useEffect(() => {
+    document.body.classList.toggle('detail-open', !!selected)
+    return () => document.body.classList.remove('detail-open')
+  }, [selected])
+
   const fetchRecipes = useCallback(async (currentToken: string, q?: string, tags?: string[]) => {
     const params = new URLSearchParams()
     if (q) params.set('q', q)

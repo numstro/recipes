@@ -642,6 +642,10 @@ body {
 }
 
 @media (max-width: 700px) {
+  body.detail-open {
+    overflow: hidden;
+  }
+
   .list-pane.has-detail {
     display: none;
   }
