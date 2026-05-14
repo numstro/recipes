@@ -573,8 +573,8 @@ export default function HomePage() {
           )}
         </div>
 
-        <div className="list-detail-layout" onClick={() => setSelected(null)}>
-          <div className={`list-pane${selected ? ' has-detail' : ''}`} onClick={e => e.stopPropagation()}>
+        <div className="list-detail-layout">
+          <div className={`list-pane${selected ? ' has-detail' : ''}`}>
             <div className="list-controls">
               <input
                 className="search-input"
@@ -624,7 +624,6 @@ export default function HomePage() {
           </div>
 
           {selected && (
-            <div onClick={e => e.stopPropagation()}>
             <DetailPanel
               recipe={selected}
               token={token}
@@ -639,7 +638,6 @@ export default function HomePage() {
               onTagClick={tag => handleTagClick(tag)}
               onNewTags={tags => setAllTags(prev => [...new Set([...prev, ...tags])].sort())}
             />
-            </div>
           )}
         </div>
       </div>
