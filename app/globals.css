@@ -620,9 +620,14 @@ body {
 }
 
 .tag-chip-clear {
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.tag-chip-clear:hover {
   background: var(--accent);
   color: white;
-  border-color: var(--accent);
 }
 
 .tag-chip-sm {
