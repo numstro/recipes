@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 interface AdminUser {
   id: string
@@ -63,6 +63,14 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    const saved = sessionStorage.getItem('admin_key')
+    if (saved) {
+      setAdminKey(saved)
+      loadData(saved).then(ok => { if (ok) setAuthed(true) })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const [users, setUsers] = useState<AdminUser[]>([])
   const [deletedRecipes, setDeletedRecipes] = useState<DeletedRecipe[]>([])
   const [logs, setLogs] = useState<ActivityLog[]>([])
@@ -100,7 +108,10 @@ export default function AdminPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     const ok = await loadData(adminKey)
-    if (ok) setAuthed(true)
+    if (ok) {
+      sessionStorage.setItem('admin_key', adminKey)
+      setAuthed(true)
+    }
   }
 
   async function handleRestore(id: number) {
