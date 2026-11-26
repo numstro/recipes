@@ -8,22 +8,13 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urljoin, urlparse, parse_qs
 import json
 
-import requests
+from curl_cffi import requests
 from bs4 import BeautifulSoup
 
 FETCH_TIMEOUT = 15
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "DNT": "1",
-    "Upgrade-Insecure-Requests": "1",
-    # No Accept-Encoding: brotli — Python requests can't decode it
-}
+# Impersonating Chrome's TLS fingerprint gets past bot checks (e.g. AllRecipes)
+# that 403 plain python-requests even with a browser User-Agent.
+_IMPERSONATE = 'chrome'
 
 
 class handler(BaseHTTPRequestHandler):
@@ -94,13 +85,15 @@ def fetch_metadata(url: str) -> dict:
     }
 
     try:
-        resp = requests.get(url, timeout=FETCH_TIMEOUT, headers=_HEADERS, allow_redirects=True)
-        final_url = resp.url
-        parsed = urlparse(final_url)
-        result['url'] = final_url
-        result['domain'] = parsed.netloc.removeprefix('www.')
+        resp = requests.get(url, timeout=FETCH_TIMEOUT, impersonate=_IMPERSONATE, allow_redirects=True)
     except Exception as exc:
         raise RuntimeError(f'Could not fetch URL: {exc}') from exc
+    if resp.status_code >= 400:
+        raise RuntimeError(f'Site returned HTTP {resp.status_code} (likely blocked)')
+    final_url = resp.url
+    parsed = urlparse(final_url)
+    result['url'] = final_url
+    result['domain'] = parsed.netloc.removeprefix('www.')
 
     # Use raw bytes so BeautifulSoup reads encoding from <meta charset>,
     # not the HTTP header (which often incorrectly claims ISO-8859-1).
