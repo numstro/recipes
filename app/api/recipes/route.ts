@@ -83,7 +83,9 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { url, title, description, image_url, favicon_url, domain, notes, ingredients, steps, tags, text_snapshot, servings } = body
+  const { title, description, image_url, favicon_url, domain, notes, ingredients, steps, tags, text_snapshot, servings } = body
+  // Hand-written recipes have no source URL; url is NOT NULL UNIQUE, so give them an internal one.
+  const url: string | undefined = body.manual ? `manual:${crypto.randomUUID()}` : body.url
 
   if (!url) return NextResponse.json({ error: 'url is required' }, { status: 400 })
 

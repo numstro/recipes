@@ -60,10 +60,14 @@ function scaleIngredient(text: string, factor: number): string {
   return formatQty(parsed.value * factor) + text.slice(parsed.len)
 }
 
+const isManual = (r: Recipe) => r.url.startsWith('manual:')
+
 interface DetailPanelProps {
   recipe: Recipe
   token: string
   allTags: string[]
+  isNew: boolean
+  onDiscardNew: () => void
   onClose: () => void
   onDeleted: (id: number) => void
   onUpdated: (recipe: Recipe) => void
@@ -71,7 +75,7 @@ interface DetailPanelProps {
   onNewTags: (tags: string[]) => void
 }
 
-function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, onTagClick, onNewTags }: DetailPanelProps) {
+function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onDeleted, onUpdated, onTagClick, onNewTags }: DetailPanelProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
@@ -90,7 +94,8 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
   useEffect(() => {
     setDesiredServings(recipe.servings)
     setEditServings(recipe.servings?.toString() ?? '')
-    setEditing(false)
+    if (isNew) startEdit()
+    else setEditing(false)
   }, [recipe.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const scaleFactor = (recipe.servings && desiredServings && desiredServings > 0)
@@ -170,13 +175,17 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
         <div className="detail-header-meta">
           {recipe.image_url && <img className="detail-image" src={recipe.image_url} alt="" />}
           <div>
-            <a className="detail-title" href={recipe.url} target="_blank" rel="noopener noreferrer">
-              {recipe.title || recipe.url}
-            </a>
-            {recipe.domain && (
+            {isManual(recipe) ? (
+              <div className="detail-title">{recipe.title || 'Untitled recipe'}</div>
+            ) : (
+              <a className="detail-title" href={recipe.url} target="_blank" rel="noopener noreferrer">
+                {recipe.title || recipe.url}
+              </a>
+            )}
+            {(recipe.domain || isManual(recipe)) && (
               <div className="detail-domain">
                 {recipe.favicon_url && <img className="card-favicon" src={recipe.favicon_url} alt="" />}
-                {recipe.domain} · {date}
+                {recipe.domain ?? 'Own recipe'} · {date}
               </div>
             )}
             <div className="detail-added-by">Added by {recipe.added_by_name ?? 'someone'}</div>
@@ -190,7 +199,7 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
           <>
             <div className="detail-section">
               <div className="detail-section-label">Title</div>
-              <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ fontSize: 15 }} />
+              <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Recipe name" autoFocus={isNew} style={{ fontSize: 15 }} />
             </div>
 
 
@@ -216,7 +225,7 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
 
             <div className="detail-actions">
               <button className="btn btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-              <button className="btn btn-secondary" onClick={() => setEditing(false)}>Cancel</button>
+              <button className="btn btn-secondary" onClick={() => isNew ? onDiscardNew() : setEditing(false)}>Cancel</button>
             </div>
           </>
         ) : (
@@ -355,12 +364,14 @@ function DetailPanel({ recipe, token, allTags, onClose, onDeleted, onUpdated, on
               </div>
             </div>
 
-            <div className="detail-section">
-              <div className="detail-section-label">URL</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <a className="detail-url" href={recipe.url} target="_blank" rel="noopener noreferrer">{recipe.url}</a>
+            {!isManual(recipe) && (
+              <div className="detail-section">
+                <div className="detail-section-label">URL</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <a className="detail-url" href={recipe.url} target="_blank" rel="noopener noreferrer">{recipe.url}</a>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="detail-actions">
               <button className="btn btn-secondary" onClick={startEdit}>Edit</button>
@@ -389,10 +400,10 @@ function RecipeRow({ recipe, selected, onClick, onTagClick }: {
         <div className="row-thumb row-thumb-placeholder">🍽️</div>
       )}
       <div className="row-body">
-        <div className="row-title">{recipe.title || recipe.url}</div>
+        <div className="row-title">{recipe.title || (isManual(recipe) ? 'Untitled recipe' : recipe.url)}</div>
         <div className="row-meta">
           {recipe.favicon_url && <img className="card-favicon" src={recipe.favicon_url} alt="" />}
-          {recipe.domain && <span>{recipe.domain}</span>}
+          {(recipe.domain || isManual(recipe)) && <span>{recipe.domain ?? 'Own recipe'}</span>}
           <span>·</span>
           <span>{date}</span>
           {recipe.tags.map(tag => (
@@ -418,6 +429,7 @@ export default function HomePage() {
   const [activeTags, setActiveTags] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [selected, setSelected] = useState<Recipe | null>(null)
+  const [newManualId, setNewManualId] = useState<number | null>(null)
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -535,6 +547,34 @@ export default function HomePage() {
     setSelected(withName)
   }
 
+  async function handleAddManual() {
+    setStatus('')
+    setStatusError(false)
+    const res = await fetch('/api/recipes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ manual: true }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      setStatus(err.error || 'Failed to create recipe.')
+      setStatusError(true)
+      return
+    }
+    const { recipe } = await res.json()
+    const withName = { ...recipe, added_by_name: user?.user_metadata?.display_name ?? null }
+    setRecipes(prev => [withName, ...prev])
+    setNewManualId(recipe.id)
+    setSelected(withName)
+  }
+
+  async function discardNewManual(id: number) {
+    setNewManualId(null)
+    setSelected(null)
+    setRecipes(prev => prev.filter(x => x.id !== id))
+    await fetch(`/api/recipes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+  }
+
   async function handleSignOut() {
     await supabaseClient.auth.signOut()
   }
@@ -566,6 +606,9 @@ export default function HomePage() {
             />
             <button className="btn btn-primary" type="submit" disabled={scraping}>
               {scraping ? 'Saving…' : 'Add'}
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={handleAddManual} disabled={scraping}>
+              Write your own
             </button>
           </form>
           {status && (
@@ -628,9 +671,12 @@ export default function HomePage() {
               recipe={selected}
               token={token}
               allTags={allTags}
-              onClose={() => setSelected(null)}
+              isNew={selected.id === newManualId}
+              onDiscardNew={() => discardNewManual(selected.id)}
+              onClose={() => selected.id === newManualId ? discardNewManual(selected.id) : setSelected(null)}
               onDeleted={id => { setRecipes(prev => prev.filter(x => x.id !== id)); setSelected(null) }}
               onUpdated={updated => {
+                if (updated.id === newManualId) setNewManualId(null)
                 const withName = { ...updated, added_by_name: selected.added_by_name }
                 setRecipes(prev => prev.map(x => x.id === updated.id ? withName : x))
                 setSelected(withName)
