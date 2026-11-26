@@ -11,7 +11,7 @@ import json
 from curl_cffi import requests
 from bs4 import BeautifulSoup
 
-FETCH_TIMEOUT = 15
+FETCH_TIMEOUT = 10
 # Impersonating Chrome's TLS fingerprint gets past bot checks (e.g. AllRecipes)
 # that 403 plain python-requests even with a browser User-Agent.
 _IMPERSONATE = 'chrome'
@@ -58,6 +58,41 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
 
+_WAYBACK_TIMEOUT = 8
+_WAYBACK_PREFIX = re.compile(rb'(?:https?:)?//web\.archive\.org/web/\d+[a-z_]*/')
+
+
+def _fetch_wayback(url: str):
+    try:
+        cdx = requests.get(
+            'https://web.archive.org/cdx/search/cdx',
+            params={'url': url, 'output': 'json', 'filter': 'statuscode:200',
+                    'limit': '-1', 'fl': 'timestamp'},
+            impersonate=_IMPERSONATE, timeout=_WAYBACK_TIMEOUT,
+        )
+        rows = cdx.json() if cdx.status_code == 200 and cdx.text.strip() else []
+    except Exception:
+        return None
+    if len(rows) < 2:
+        return None
+    ts = rows[-1][0]
+    # id_ serves the original bytes; some captures have a broken
+    # Content-Encoding there, so retry the rewritten page.
+    for mode in ('id_', ''):
+        try:
+            snap = requests.get(f'https://web.archive.org/web/{ts}{mode}/{url}',
+                                impersonate=_IMPERSONATE, timeout=_WAYBACK_TIMEOUT)
+        except Exception:
+            continue
+        if snap.status_code == 200:
+            return snap.content
+    return None
+
+
+def _unarchive_urls(content: bytes) -> bytes:
+    return _WAYBACK_PREFIX.sub(b'', content)
+
+
 _FIRST_INT = re.compile(r'\d+')
 
 
@@ -87,17 +122,28 @@ def fetch_metadata(url: str) -> dict:
     try:
         resp = requests.get(url, timeout=FETCH_TIMEOUT, impersonate=_IMPERSONATE, allow_redirects=True)
     except Exception as exc:
-        raise RuntimeError(f'Could not fetch URL: {exc}') from exc
-    if resp.status_code >= 400:
-        raise RuntimeError(f'Site returned HTTP {resp.status_code} (likely blocked)')
-    final_url = resp.url
+        resp = None
+        fetch_error = f'Could not fetch URL: {exc}'
+    else:
+        fetch_error = f'Site returned HTTP {resp.status_code} (likely blocked)'
+
+    if resp is not None and resp.status_code < 400:
+        final_url = resp.url
+        content = resp.content
+    else:
+        # Some sites (AllRecipes, Serious Eats, Budget Bytes) block Vercel's
+        # datacenter IPs outright, so fall back to the newest archived copy.
+        content = _fetch_wayback(url)
+        if content is None:
+            raise RuntimeError(fetch_error)
+        final_url = url
     parsed = urlparse(final_url)
     result['url'] = final_url
     result['domain'] = parsed.netloc.removeprefix('www.')
 
     # Use raw bytes so BeautifulSoup reads encoding from <meta charset>,
     # not the HTTP header (which often incorrectly claims ISO-8859-1).
-    soup = BeautifulSoup(resp.content, 'html.parser')
+    soup = BeautifulSoup(_unarchive_urls(content), 'html.parser')
 
     og_title = _meta(soup, 'og:title')
     tw_title = _meta(soup, 'twitter:title')
