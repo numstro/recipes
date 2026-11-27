@@ -770,7 +770,21 @@ body.printing .detail-body:not(:has(.section-steps)) {
 
 body.printing .detail-section {
   margin-bottom: 8pt;
-  break-inside: avoid-page;
+}
+
+body.printing .print-long .detail-body {
+  display: block;
+}
+
+body.printing .ingredients-list,
+body.printing .steps-list {
+  display: block;
+}
+
+body.printing .ingredient-item,
+body.printing .step-item {
+  break-inside: avoid;
+  margin-bottom: 3pt;
 }
 
 body.printing .section-notes {
@@ -791,6 +805,6 @@ body.printing .detail-notes {
   font-size: 10.5pt;
 }
 
-body.printing .steps-list {
-  gap: 5pt;
+body.printing .step-item {
+  margin-bottom: 5pt;
 }

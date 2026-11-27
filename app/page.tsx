@@ -173,8 +173,11 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
     if (!panel) return
     document.body.classList.add('printing')
     panel.style.setProperty('--print-scale', '1')
-    const pageHeightPx = 10.2 * 96 * 0.98
-    panel.style.setProperty('--print-scale', String(Math.max(0.6, Math.min(1, pageHeightPx / panel.scrollHeight))))
+    panel.classList.remove('print-long')
+    const pageHeightPx = 10.2 * 96 * 0.88
+    const scale = pageHeightPx / panel.scrollHeight
+    if (scale < 0.6) panel.classList.add('print-long')
+    panel.style.setProperty('--print-scale', String(Math.max(0.6, Math.min(1, scale))))
     const done = () => {
       document.body.classList.remove('printing')
       window.removeEventListener('afterprint', done)
