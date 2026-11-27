@@ -683,3 +683,114 @@ body {
     font-size: 16px;
   }
 }
+
+/* ── Print card ── */
+.print-only {
+  display: none;
+}
+
+@page {
+  size: portrait;
+  margin: 0.4in;
+}
+
+body.printing {
+  background: white;
+  overflow: visible !important;
+}
+
+body.printing .nav,
+body.printing .toolbar,
+body.printing .list-pane,
+body.printing .detail-close,
+body.printing .detail-actions,
+body.printing .print-hide {
+  display: none !important;
+}
+
+body.printing .print-only {
+  display: inline;
+}
+
+body.printing .page {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+body.printing .list-detail-layout {
+  display: block;
+  min-height: 0;
+}
+
+body.printing .detail-panel {
+  position: static;
+  width: 7.4in;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  zoom: var(--print-scale, 1);
+  font-size: 10.5pt;
+  line-height: 1.35;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+body.printing .detail-header {
+  position: static;
+  padding: 0 0 8pt;
+  border-bottom: 2px solid var(--accent);
+}
+
+body.printing .detail-image {
+  width: 64px;
+  height: 64px;
+}
+
+body.printing .detail-title {
+  font-size: 17pt;
+  font-weight: 700;
+  color: var(--text);
+}
+
+body.printing .detail-body {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  column-gap: 0.3in;
+  align-items: start;
+  padding: 10pt 0 0;
+}
+
+body.printing .detail-body:not(:has(.section-ingredients)),
+body.printing .detail-body:not(:has(.section-steps)) {
+  display: block;
+}
+
+body.printing .detail-section {
+  margin-bottom: 8pt;
+  break-inside: avoid-page;
+}
+
+body.printing .section-notes {
+  grid-column: 1 / -1;
+}
+
+body.printing .section-ingredients {
+  grid-column: 1;
+}
+
+body.printing .section-steps {
+  grid-column: 2;
+}
+
+body.printing .ingredients-list,
+body.printing .steps-list,
+body.printing .detail-notes {
+  font-size: 10.5pt;
+}
+
+body.printing .steps-list {
+  gap: 5pt;
+}

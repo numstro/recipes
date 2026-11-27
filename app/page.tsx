@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
@@ -76,6 +76,7 @@ interface DetailPanelProps {
 }
 
 function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onDeleted, onUpdated, onTagClick, onNewTags }: DetailPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editTitle, setEditTitle] = useState(recipe.title ?? '')
@@ -167,10 +168,27 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
     }
   }
 
+  function handlePrint() {
+    const panel = panelRef.current
+    if (!panel) return
+    document.body.classList.add('printing')
+    panel.style.setProperty('--print-scale', '1')
+    const pageHeightPx = 10.2 * 96 * 0.98
+    panel.style.setProperty('--print-scale', String(Math.max(0.6, Math.min(1, pageHeightPx / panel.scrollHeight))))
+    const done = () => {
+      document.body.classList.remove('printing')
+      window.removeEventListener('afterprint', done)
+      window.removeEventListener('pointerdown', done)
+    }
+    window.addEventListener('afterprint', done)
+    window.print()
+    setTimeout(() => window.addEventListener('pointerdown', done), 500)
+  }
+
   const date = new Date(recipe.saved_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
   return (
-    <div className="detail-panel">
+    <div className="detail-panel" ref={panelRef}>
       <div className="detail-header">
         <div className="detail-header-meta">
           {recipe.image_url && <img className="detail-image" src={recipe.image_url} alt="" />}
@@ -231,20 +249,24 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
         ) : (
           <>
             {recipe.notes && (
-              <div className="detail-section">
+              <div className="detail-section section-notes">
                 <div className="detail-section-label">Notes</div>
                 <div className="detail-notes">{recipe.notes}</div>
               </div>
             )}
 
             {recipe.ingredients.length > 0 && (
-              <div className="detail-section">
+              <div className="detail-section section-ingredients">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                   <div className="detail-section-label" style={{ marginBottom: 0 }}>Ingredients</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     <span>Serves</span>
                     {recipe.servings != null ? (
+                      <span className="print-only">{desiredServings ?? recipe.servings}</span>
+                    ) : null}
+                    {recipe.servings != null ? (
                       <select
+                        className="print-hide"
                         value={desiredServings ?? recipe.servings}
                         onChange={e => setDesiredServings(parseInt(e.target.value))}
                         style={{ padding: '0.15rem 0.25rem', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.75rem', background: scaleFactor !== 1 ? '#fef3ee' : 'var(--bg)', cursor: 'pointer' }}
@@ -273,7 +295,7 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
             )}
 
             {recipe.steps.length > 0 && (
-              <div className="detail-section">
+              <div className="detail-section section-steps">
                 <div className="detail-section-label">Steps</div>
                 <div className="steps-list">
                   {(() => {
@@ -293,7 +315,7 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
               </div>
             )}
 
-            <div className="detail-section">
+            <div className="detail-section print-hide">
               <div className="detail-section-label">Tags</div>
               <div style={{ position: 'relative' }}>
                 <div
@@ -365,7 +387,7 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
             </div>
 
             {!isManual(recipe) && (
-              <div className="detail-section">
+              <div className="detail-section print-hide">
                 <div className="detail-section-label">URL</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <a className="detail-url" href={recipe.url} target="_blank" rel="noopener noreferrer">{recipe.url}</a>
@@ -375,6 +397,7 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
 
             <div className="detail-actions">
               <button className="btn btn-secondary" onClick={startEdit}>Edit</button>
+              <button className="btn btn-secondary" onClick={handlePrint}>Print</button>
               <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
             </div>
           </>
