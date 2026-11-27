@@ -117,6 +117,9 @@ def fetch_metadata(url: str) -> dict:
         'ingredients': [],
         'steps': [],
         'servings': None,
+        'prep_minutes': None,
+        'cook_minutes': None,
+        'total_minutes': None,
     }
 
     try:
@@ -167,6 +170,7 @@ def fetch_metadata(url: str) -> dict:
     result['ingredients'] = extract_ingredients(soup)
     result['steps'] = extract_steps(soup)
     result['servings'] = extract_servings(soup)
+    result.update(extract_times(soup))
 
     result['text_snapshot'] = _extract_text(soup)
 
@@ -217,6 +221,62 @@ def extract_servings(soup: BeautifulSoup):
         pass
 
     return None
+
+
+_ISO_DURATION = re.compile(r'P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?', re.I)
+_TIME_FIELDS = {'prep_minutes': 'prepTime', 'cook_minutes': 'cookTime', 'total_minutes': 'totalTime'}
+
+
+def _parse_duration(raw):
+    if isinstance(raw, list):
+        raw = raw[0] if raw else None
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    m = _ISO_DURATION.fullmatch(raw.strip())
+    if not m or not any(m.groups()):
+        return None
+    d, h, mi, sec = (float(g) if g else 0 for g in m.groups())
+    minutes = round(d * 1440 + h * 60 + mi + sec / 60)
+    return minutes if 0 < minutes < 10080 else None
+
+
+def _recipe_ld_objects(soup: BeautifulSoup):
+    for tag in soup.find_all('script', type='application/ld+json'):
+        try:
+            data = _json.loads(tag.string or '')
+        except Exception:
+            continue
+        if isinstance(data, dict) and '@graph' in data:
+            candidates = data['@graph']
+        elif isinstance(data, list):
+            candidates = data
+        else:
+            candidates = [data]
+        for obj in candidates:
+            if not isinstance(obj, dict):
+                continue
+            obj_type = obj.get('@type', '')
+            types = obj_type if isinstance(obj_type, list) else [obj_type]
+            if any(isinstance(t, str) and t.lower() == 'recipe' for t in types):
+                yield obj
+
+
+def extract_times(soup: BeautifulSoup) -> dict:
+    times = {k: None for k in _TIME_FIELDS}
+    try:
+        for obj in _recipe_ld_objects(soup):
+            for key, field in _TIME_FIELDS.items():
+                if times[key] is None:
+                    times[key] = _parse_duration(obj.get(field))
+    except Exception:
+        pass
+    for key, field in _TIME_FIELDS.items():
+        if times[key] is not None:
+            continue
+        el = soup.find(attrs={'itemprop': field})
+        if el:
+            times[key] = _parse_duration(el.get('content') or el.get('datetime'))
+    return times
 
 
 def extract_ingredients(soup: BeautifulSoup) -> list:

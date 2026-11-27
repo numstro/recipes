@@ -26,6 +26,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const update: Record<string, unknown> = { title, description, notes, ingredients, steps, tags }
   if ('servings' in body) update.servings = servings ?? null
+  for (const key of ['prep_minutes', 'cook_minutes', 'total_minutes']) {
+    if (key in body) update[key] = body[key] ?? null
+  }
 
   const { data, error } = await supabase
     .from('recipes')

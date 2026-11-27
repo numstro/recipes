@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('recipes')
-    .select('id,url,title,description,image_url,favicon_url,domain,notes,ingredients,steps,tags,servings,added_by,saved_at,updated_at')
+    .select('id,url,title,description,image_url,favicon_url,domain,notes,ingredients,steps,tags,servings,prep_minutes,cook_minutes,total_minutes,added_by,saved_at,updated_at')
     .is('deleted_at', null)
     .order('saved_at', { ascending: false })
 
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { title, description, image_url, favicon_url, domain, notes, ingredients, steps, tags, text_snapshot, servings } = body
+  const { title, description, image_url, favicon_url, domain, notes, ingredients, steps, tags, text_snapshot, servings, prep_minutes, cook_minutes, total_minutes } = body
   // Hand-written recipes have no source URL; url is NOT NULL UNIQUE, so give them an internal one.
   const url: string | undefined = body.manual ? `manual:${crypto.randomUUID()}` : body.url
 
@@ -103,6 +103,9 @@ export async function POST(req: NextRequest) {
       steps: steps || [],
       tags: tags || [],
       servings: servings ?? null,
+      prep_minutes: prep_minutes ?? null,
+      cook_minutes: cook_minutes ?? null,
+      total_minutes: total_minutes ?? null,
       text_snapshot: text_snapshot || null,
       added_by: user.id,
     })
@@ -133,6 +136,9 @@ export async function POST(req: NextRequest) {
             ingredients: ingredients?.length ? ingredients : existing.ingredients,
             steps: steps?.length ? steps : existing.steps,
             servings: servings ?? existing.servings,
+            prep_minutes: prep_minutes ?? existing.prep_minutes,
+            cook_minutes: cook_minutes ?? existing.cook_minutes,
+            total_minutes: total_minutes ?? existing.total_minutes,
             added_by: user.id,
           })
           .eq('url', url)

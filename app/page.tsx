@@ -18,10 +18,25 @@ interface Recipe {
   steps: string[]
   tags: string[]
   servings: number | null
+  prep_minutes: number | null
+  cook_minutes: number | null
+  total_minutes: number | null
   added_by: string
   added_by_name: string | null
   saved_at: string
   updated_at: string
+}
+
+function formatMinutes(m: number) {
+  const h = Math.floor(m / 60)
+  const min = m % 60
+  return [h && `${h} hr`, min && `${min} min`].filter(Boolean).join(' ')
+}
+
+function timeParts(r: Recipe) {
+  const total = r.total_minutes ?? (r.prep_minutes && r.cook_minutes ? r.prep_minutes + r.cook_minutes : null)
+  const parts: [string, number | null][] = [['Prep', r.prep_minutes], ['Cook', r.cook_minutes], ['Total', total]]
+  return parts.filter((p): p is [string, number] => p[1] != null)
 }
 
 const UNICODE_FRACS: Record<string, number> = {
@@ -85,6 +100,9 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
   const [editSteps, setEditSteps] = useState(recipe.steps.join('\n\n'))
   const [editTags, setEditTags] = useState(recipe.tags.join(', '))
   const [editServings, setEditServings] = useState(recipe.servings?.toString() ?? '')
+  const [editPrep, setEditPrep] = useState(recipe.prep_minutes?.toString() ?? '')
+  const [editCook, setEditCook] = useState(recipe.cook_minutes?.toString() ?? '')
+  const [editTotal, setEditTotal] = useState(recipe.total_minutes?.toString() ?? '')
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [tagInputSuggestions, setTagInputSuggestions] = useState<string[]>([])
@@ -110,6 +128,9 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
     setEditSteps(recipe.steps.join('\n\n'))
     setEditTags(recipe.tags.join(', '))
     setEditServings(recipe.servings?.toString() ?? '')
+    setEditPrep(recipe.prep_minutes?.toString() ?? '')
+    setEditCook(recipe.cook_minutes?.toString() ?? '')
+    setEditTotal(recipe.total_minutes?.toString() ?? '')
     setEditing(true)
   }
 
@@ -122,7 +143,7 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
     const res = await fetch(`/api/recipes/${recipe.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ title: editTitle, description: recipe.description, notes: editNotes, ingredients, steps, tags, servings: editServings ? parseInt(editServings) : null }),
+      body: JSON.stringify({ title: editTitle, description: recipe.description, notes: editNotes, ingredients, steps, tags, servings: editServings ? parseInt(editServings) : null, prep_minutes: editPrep ? parseInt(editPrep) : null, cook_minutes: editCook ? parseInt(editCook) : null, total_minutes: editTotal ? parseInt(editTotal) : null }),
     })
     setSaving(false)
     if (res.ok) {
@@ -209,6 +230,11 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
                 {recipe.domain ?? 'Own recipe'} · {date}
               </div>
             )}
+            {timeParts(recipe).length > 0 && (
+              <div className="detail-times">
+                {timeParts(recipe).map(([label, m]) => <span key={label}><strong>{label}</strong> {formatMinutes(m)}</span>)}
+              </div>
+            )}
             <div className="detail-added-by">Added by {recipe.added_by_name ?? 'someone'}</div>
           </div>
         </div>
@@ -227,6 +253,15 @@ function DetailPanel({ recipe, token, allTags, isNew, onDiscardNew, onClose, onD
             <div className="detail-section">
               <div className="detail-section-label">Serves <span className="edit-hint">default serving size</span></div>
               <input className="edit-input" type="number" min={1} value={editServings} onChange={e => setEditServings(e.target.value)} placeholder="e.g. 4" style={{ fontSize: 15, width: '6rem' }} />
+            </div>
+
+            <div className="detail-section">
+              <div className="detail-section-label">Time <span className="edit-hint">minutes</span></div>
+              <div className="edit-times">
+                <label>Prep<input className="edit-input" type="number" min={0} value={editPrep} onChange={e => setEditPrep(e.target.value)} /></label>
+                <label>Cook<input className="edit-input" type="number" min={0} value={editCook} onChange={e => setEditCook(e.target.value)} /></label>
+                <label>Total<input className="edit-input" type="number" min={0} value={editTotal} onChange={e => setEditTotal(e.target.value)} placeholder={editPrep && editCook ? String(parseInt(editPrep) + parseInt(editCook)) : ''} /></label>
+              </div>
             </div>
 
             <div className="detail-section">
